@@ -10,20 +10,17 @@ from Client.core.agent_loop import AgentLoop
 from Client.core.llm_client import LLMClient
 from Client.core.rag import DualTrackRAG
 from Client.maya_host.client import MayaSocketClient
-from Client.tools.maya_tools import (
-    CreateAndConnectNodeTool,
-    QuerySelectionContextTool,
-    RunCustomPythonTool,
-)
-from Client.tools.registry import ToolRegistry
+from Client.tools.registry import ToolRegistry, register_default_maya_tools
 
 
 class AgentWorker(QThread):
     text_chunk = Signal(str)
+    think_chunk = Signal(str)
     tool_call = Signal(str, str)
     tool_result = Signal(str, str)
     error = Signal(str)
     completed = Signal()
+    status_update = Signal(str)
     approval_requested = Signal(str, str)
 
     def __init__(self, parent: QObject | None = None):
@@ -39,9 +36,7 @@ class AgentWorker(QThread):
             timeout=config.maya_socket_timeout,
         )
         self.registry = ToolRegistry()
-        self.registry.register(QuerySelectionContextTool(self.maya_client))
-        self.registry.register(RunCustomPythonTool(self.maya_client))
-        self.registry.register(CreateAndConnectNodeTool(self.maya_client))
+        register_default_maya_tools(self.registry, self.maya_client)
 
         self.llm_client = LLMClient(
             api_key=config.dashscope_api_key,
@@ -61,26 +56,10 @@ class AgentWorker(QThread):
         system_prompt = """你是一个顶级的 Maya Technical Artist 助手。你的核心工作方式是【思考 -> 执行 -> 结构化汇报】。
 
 【约束规则】
-
-在调用任何工具前，必须先输出 你的分析与推导过程。
-
-绝对禁止使用“好的”、“让我看看”、“请稍等”等废话连篇的口语化开场白，直接输出结果。
-
-最终的分析结果或操作反馈，必须严格使用以下 Markdown 结构化汇报格式，善用 emoji 作为视觉锚点：
-
-🔍 诊断/执行结果
-（简短说明当前状态）
-
-✅ 成功项 / √ 正常状态
-节点名/属性：说明文字
-
-❌ 失败项 / X 异常状态
-错误对象：具体原因
-
-🎯 解决方案 / 下一步建议
-第一步...
-
-第二步..."""
+1. 在调用任何工具或回答前，必须先用 <think> 标签输出你的分析与推导过程。
+2. 绝对禁止使用"好的"、"让我看看"、"请稍等"等废话连篇的口语化开场白，直接输出结果。
+3. 最终的分析结果或操作反馈，必须严格使用 Markdown 结构化汇报格式，善用 emoji 作为视觉锚点。
+"""
         self.loop = AgentLoop(
             llm_client=self.llm_client,
             tool_executor=self.registry.execute_tool,
@@ -91,7 +70,6 @@ class AgentWorker(QThread):
             tool_repeat_limit=config.agent_tool_repeat_limit,
             is_tool_dangerous=self.registry.is_dangerous_tool,
         )
-
 
     def submit(self, user_text: str) -> None:
         if self.isRunning():
@@ -120,6 +98,9 @@ class AgentWorker(QThread):
 
     def on_text_chunk(self, text: str) -> None:
         self.text_chunk.emit(text)
+
+    def on_think_chunk(self, text: str) -> None:
+        self.think_chunk.emit(text)
 
     def on_status_update(self, content: str) -> None:
         self.status_update.emit(content)

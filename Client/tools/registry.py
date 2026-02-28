@@ -41,3 +41,23 @@ class ToolRegistry:
         tool = self._tools.get(name)
         return bool(tool and tool.is_dangerous)
 
+
+def register_default_maya_tools(registry: ToolRegistry, maya_client: Any) -> ToolRegistry:
+    from Client.tools.maya_tools import (
+        ConstraintTool,
+        CreateAndConnectNodeTool,
+        ExecuteSkillTool,
+        GetSetAttributeTool,
+        QuerySelectionContextTool,
+        RunCustomPythonTool,
+        TransformTool,
+    )
+
+    registry.register(QuerySelectionContextTool(maya_client))
+    registry.register(RunCustomPythonTool(maya_client))
+    registry.register(CreateAndConnectNodeTool(maya_client))
+    registry.register(TransformTool(maya_client))
+    registry.register(GetSetAttributeTool(maya_client))
+    registry.register(ConstraintTool(maya_client))
+    registry.register(ExecuteSkillTool(maya_client))
+    return registry

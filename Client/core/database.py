@@ -94,6 +94,11 @@ class ChatDatabase:
             row = conn.execute("SELECT 1 FROM sessions WHERE id = ?", (session_id,)).fetchone()
         return bool(row)
 
+    def delete_session(self, session_id: str) -> None:
+        with self._lock, self._connect() as conn:
+            conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+            conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+
     def list_sessions(self) -> list[SessionRecord]:
         with self._lock, self._connect() as conn:
             rows = conn.execute(
@@ -170,26 +175,29 @@ class ChatDatabase:
         )
 
     def get_messages_for_llm(self, session_id: str, max_messages: int = 20) -> list[dict[str, Any]]:
+        """构建发送给 LLM 的消息列表。
+
+        V1.5 ReAct 模式：
+        - 跳过旧版 role='tool' 的消息（不再使用原生 Function Calling）
+        - 跳过带 tool_calls 的 assistant 消息（旧版遗留，会触发 API 报错）
+        - 只保留纯 user / assistant 消息
+        """
         rows = self.get_messages(session_id)
         llm_messages: list[dict[str, Any]] = []
 
         for row in rows:
+            # 跳过旧版 tool 角色消息
             if row.role == "tool":
-                item: dict[str, Any] = {"role": "tool", "content": row.content}
-                if row.tool_call_id:
-                    item["tool_call_id"] = row.tool_call_id
-                llm_messages.append(item)
                 continue
 
             if row.role not in {"user", "assistant"}:
                 continue
 
-            item = {"role": row.role, "content": row.content}
+            # 跳过旧版带 tool_calls 的 assistant 消息（无对应 tool 回复会报错）
             if row.role == "assistant" and row.tool_calls:
-                try:
-                    item["tool_calls"] = json.loads(row.tool_calls)
-                except json.JSONDecodeError:
-                    pass
+                continue
+
+            item: dict[str, Any] = {"role": row.role, "content": row.content}
             llm_messages.append(item)
 
         if max_messages > 0 and len(llm_messages) > max_messages:

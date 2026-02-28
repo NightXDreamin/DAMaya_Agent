@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any, Callable, Optional, Protocol
-
-from Client.core.llm_client import LLMClient
 
 
 class AgentState(Enum):
@@ -27,6 +26,8 @@ class AgentCallbacks(Protocol):
 
     def on_text_chunk(self, text: str) -> None: ...
 
+    def on_think_chunk(self, text: str) -> None: ...
+
     def on_status_update(self, content: str) -> None: ...
 
     def on_tool_call(self, tool_name: str, arguments: dict[str, Any]) -> None: ...
@@ -46,30 +47,87 @@ class ToolCallRecord:
     arguments_json: str
 
 
+# ---------------------------------------------------------------------------
+# ReAct XML 标签正则
+# ---------------------------------------------------------------------------
+_RE_ACTION = re.compile(r"<action>\s*(\{.*?\})\s*</action>", re.DOTALL)
+_RE_FINAL_ANSWER = re.compile(r"<final_answer>(.*?)</final_answer>", re.DOTALL)
+_RE_THINK_OPEN = re.compile(r"<think>")
+_RE_THINK_CLOSE = re.compile(r"</think>")
+
+
+def _build_react_system_prompt(
+    base_prompt: str,
+    tool_schemas: list[dict[str, Any]],
+) -> str:
+    """将工具 schema 嵌入 System Prompt，强制 ReAct XML 协议。"""
+    tool_descriptions: list[str] = []
+    for schema in tool_schemas:
+        func = schema.get("function", schema)
+        name = func.get("name", "unknown")
+        desc = func.get("description", "")
+        params = json.dumps(func.get("parameters", {}), ensure_ascii=False, indent=2)
+        tool_descriptions.append(f"### {name}\n描述: {desc}\n参数 JSON Schema:\n```json\n{params}\n```")
+
+    tools_block = "\n\n".join(tool_descriptions)
+
+    # 生成工具名速查表
+    tool_names = [s.get("function", s).get("name", "unknown") for s in tool_schemas]
+    tool_name_list = ", ".join(f'`{n}`' for n in tool_names)
+
+    return f"""{base_prompt}
+
+## 可用工具集（共 {len(tool_schemas)} 个）
+{tools_block}
+
+## 工具名速查表
+仅以下工具名可用：{tool_name_list}
+**你必须严格使用上面列出的工具名，不可自行编造或猜测工具名。**
+
+## 【Agent 核心执行协议 - 严格遵守】
+面对用户需求，你必须按照以下循环思考和行动。在每一步回复中，你必须严格使用以下 XML 标签格式输出（不要输出多余解释）：
+
+1. **思考**：先用 `<think>你的分析与推导过程</think>` 输出推理链。
+2. **执行**：若需要调用工具，在思考后紧跟输出 `<action>{{"tool": "工具名", "arguments": {{...}}}}</action>`。每次回复最多调用一个工具。
+3. **最终回答**：如果任务已经彻底解决或无法继续，输出 `<final_answer>你的结构化 Markdown 回答</final_answer>`。
+
+**规则**：
+- **⚠️ 工具名必须从「工具名速查表」中精确复制，禁止使用任何未列出的工具名（如 execute_python、python、maya 等均不存在）。**
+- 需要在 Maya 中执行 Python 代码时，使用 `run_custom_python` 工具，参数为 `{{"python_code": "你的代码"}}`。
+- 你不会直接调用 function/tool API，所有工具调用通过 `<action>` 标签输出。
+- 每次回复只能包含一个 `<action>` 或一个 `<final_answer>`，不要同时出现。
+- `<action>` 里的 JSON 必须包含 `"tool"` 和 `"arguments"` 两个字段。
+- 系统会将工具执行结果以 `[Observation]` 文本形式返回给你，你继续下一轮思考。
+- 如果没有需要调用的工具，直接用 `<final_answer>` 给出最终结果。
+"""
+
+
 class AgentLoop:
     def __init__(
         self,
-        llm_client: LLMClient,
+        llm_client: Any,
         tool_executor: Callable[[str, dict[str, Any]], dict[str, Any]],
         callbacks: AgentCallbacks,
         system_prompt: str,
         tool_schemas: Optional[list[dict[str, Any]]] = None,
         max_history_messages: int = 20,
         tool_repeat_limit: int = 3,
+        max_react_rounds: int = 10,
         is_tool_dangerous: Optional[Callable[[str], bool]] = None,
     ):
-
         self.llm_client = llm_client
         self.tool_executor = tool_executor
         self.callbacks = callbacks
         self.tool_schemas = tool_schemas or []
         self.max_history_messages = max_history_messages
         self.tool_repeat_limit = tool_repeat_limit
+        self.max_react_rounds = max_react_rounds
         self._is_tool_dangerous = is_tool_dangerous
         self.state = AgentState.IDLE
 
-
-        self._messages: list[dict[str, Any]] = [{"role": "system", "content": system_prompt}]
+        # 构建带工具 schema 的 ReAct System Prompt
+        self._react_system_prompt = _build_react_system_prompt(system_prompt, self.tool_schemas)
+        self._messages: list[dict[str, Any]] = [{"role": "system", "content": self._react_system_prompt}]
         self._tool_window: list[ToolCallRecord] = []
 
     @property
@@ -77,7 +135,8 @@ class AgentLoop:
         return self._messages
 
     def set_system_prompt(self, system_prompt: str) -> None:
-        self._messages[0] = {"role": "system", "content": system_prompt}
+        self._react_system_prompt = _build_react_system_prompt(system_prompt, self.tool_schemas)
+        self._messages[0] = {"role": "system", "content": self._react_system_prompt}
 
     def process_user_input(self, user_text: str, injected_context: str = "") -> None:
         self.state = AgentState.PROCESSING
@@ -89,139 +148,146 @@ class AgentLoop:
         self._messages.append({"role": "user", "content": content})
         self._trim_history()
 
-        rounds = 0
-        while rounds < 8:
-            rounds += 1
-            assistant_text, tool_calls = self._stream_once()
+        # ---- ReAct 循环 ----
+        for round_idx in range(self.max_react_rounds):
+            full_text = self._stream_once_text()
 
-            if assistant_text:
-                self._messages.append({"role": "assistant", "content": assistant_text})
-
-            if not tool_calls:
+            # 1) 尝试提取 <final_answer>
+            final_match = _RE_FINAL_ANSWER.search(full_text)
+            if final_match:
+                self._messages.append({"role": "assistant", "content": full_text})
                 self.state = AgentState.IDLE
                 self.callbacks.on_complete()
                 return
 
-            self._messages[-1]["tool_calls"] = tool_calls
-            if self._handle_tool_calls(tool_calls):
+            # 2) 尝试提取 <action>
+            action_match = _RE_ACTION.search(full_text)
+            if action_match:
+                self._messages.append({"role": "assistant", "content": full_text})
+                observation = self._execute_action(action_match.group(1))
+                # 以 user 角色注入 Observation
+                self._messages.append({"role": "user", "content": f"[Observation]\n{observation}"})
                 continue
 
+            # 3) 既没有 action 也没有 final_answer —— 当作最终回答
+            self._messages.append({"role": "assistant", "content": full_text})
             self.state = AgentState.IDLE
             self.callbacks.on_complete()
             return
 
+        # 超过最大轮次
         self.state = AgentState.ERROR
-        self.callbacks.on_error("超过最大循环次数，已自动停止。")
+        self.callbacks.on_error("超过最大 ReAct 循环次数，已自动停止。")
+        self.callbacks.on_complete()
 
-    def _stream_once(self) -> tuple[str, list[dict[str, Any]]]:
+    # ------------------------------------------------------------------
+    # 流式接收 LLM 纯文本（不传 tools 参数）
+    # ------------------------------------------------------------------
+    def _stream_once_text(self) -> str:
         self.state = AgentState.STREAMING
         text_parts: list[str] = []
-        tool_calls: dict[int, dict[str, Any]] = {}
+        in_think = False
 
-        for event in self.llm_client.chat_stream(self._messages, tools=self.tool_schemas):
+        for event in self.llm_client.chat_stream(self._messages):
             if event.type == "text" and event.content:
-                text_parts.append(event.content)
-                self.callbacks.on_text_chunk(event.content)
-            elif event.type == "tool_call_delta" and event.tool_call_delta:
-                self._merge_tool_delta(tool_calls, event.tool_call_delta)
+                chunk = event.content
+                text_parts.append(chunk)
 
-        normalized_tool_calls = [tool_calls[k] for k in sorted(tool_calls)]
-        return "".join(text_parts), normalized_tool_calls
+                # 实时检测 <think> / </think> 标签进行分流
+                remaining = chunk
+                while remaining:
+                    if not in_think:
+                        m_open = _RE_THINK_OPEN.search(remaining)
+                        if m_open:
+                            before = remaining[:m_open.start()]
+                            if before:
+                                self.callbacks.on_text_chunk(before)
+                            in_think = True
+                            remaining = remaining[m_open.end():]
+                        else:
+                            self.callbacks.on_text_chunk(remaining)
+                            remaining = ""
+                    else:
+                        m_close = _RE_THINK_CLOSE.search(remaining)
+                        if m_close:
+                            think_text = remaining[:m_close.start()]
+                            if think_text:
+                                self.callbacks.on_think_chunk(think_text)
+                            in_think = False
+                            remaining = remaining[m_close.end():]
+                        else:
+                            self.callbacks.on_think_chunk(remaining)
+                            remaining = ""
 
-    @staticmethod
-    def _merge_tool_delta(tool_calls: dict[int, dict[str, Any]], delta: dict[str, Any]) -> None:
-        idx = delta.get("index", 0)
-        if idx not in tool_calls:
-            tool_calls[idx] = {
-                "id": delta.get("id") or f"call_{idx}",
-                "type": "function",
-                "function": {"name": "", "arguments": ""},
-            }
+        return "".join(text_parts)
 
-        item = tool_calls[idx]
-        if delta.get("id"):
-            item["id"] = delta["id"]
-        if delta.get("name"):
-            item["function"]["name"] += delta["name"]
-        if delta.get("arguments"):
-            item["function"]["arguments"] += delta["arguments"]
+    # ------------------------------------------------------------------
+    # 解析并执行 <action> JSON
+    # ------------------------------------------------------------------
+    def _execute_action(self, action_json: str) -> str:
+        try:
+            parsed = json.loads(action_json)
+        except json.JSONDecodeError:
+            err_msg = f"解析失败：你的 <action> JSON 格式错误，请检查并重试。原文: {action_json[:200]}"
+            self.callbacks.on_error(err_msg)
+            return f"[Error] {err_msg}"
 
-    def _handle_tool_calls(self, tool_calls: list[dict[str, Any]]) -> bool:
-        for call in tool_calls:
-            self.state = AgentState.TOOL_PENDING
-            function = call.get("function", {})
-            tool_name = function.get("name", "")
-            arguments_text = function.get("arguments", "{}")
+        tool_name = str(parsed.get("tool", "")).strip()
+        arguments = parsed.get("arguments", {})
+        if not isinstance(arguments, dict):
+            arguments = {}
 
-            try:
-                arguments = json.loads(arguments_text or "{}")
-            except json.JSONDecodeError:
-                arguments = {"raw_arguments": arguments_text}
+        if not tool_name:
+            err_msg = "解析失败：<action> 缺少 tool 字段。"
+            self.callbacks.on_error(err_msg)
+            return f"[Error] {err_msg}"
 
-            self.callbacks.on_tool_call(tool_name, arguments)
+        self.callbacks.on_tool_call(tool_name, arguments)
 
-            if self._is_repeated(tool_name, arguments_text):
-                self.state = AgentState.ERROR
-                self.callbacks.on_error(f"检测到重复工具调用阻断：{tool_name}")
-                self._messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": call.get("id"),
-                        "content": json.dumps(
-                            {
-                                "success": False,
-                                "error": "重复工具调用已阻断。",
-                                "tool_name": tool_name,
-                            },
-                            ensure_ascii=False,
-                        ),
-                    }
-                )
-                return True
+        # 重复检测
+        arguments_json = json.dumps(arguments, ensure_ascii=False, sort_keys=True)
+        if self._is_repeated(tool_name, arguments_json):
+            self.state = AgentState.ERROR
+            err_msg = f"检测到重复工具调用阻断：{tool_name}"
+            self.callbacks.on_error(err_msg)
+            return f"[Error] {err_msg}"
 
+        # 高危审批
+        if self._is_dangerous_tool(tool_name):
+            self.state = AgentState.AWAITING_APPROVAL
             preview = json.dumps(arguments, ensure_ascii=False, indent=2)
-            if self._is_dangerous_tool(tool_name):
-                self.state = AgentState.AWAITING_APPROVAL
-                approved = self.callbacks.on_approval_required(tool_name, preview)
-                if not approved:
-                    self._messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": call.get("id"),
-                            "content": json.dumps(
-                                {
-                                    "success": False,
-                                    "error": "用户拒绝执行高危操作。",
-                                    "tool_name": tool_name,
-                                },
-                                ensure_ascii=False,
-                            ),
-                        }
-                    )
-                    continue
+            approved = self.callbacks.on_approval_required(tool_name, preview)
+            if not approved:
+                return "[Error] 用户拒绝执行高危操作。"
 
-            self.state = AgentState.TOOL_EXECUTING
-            self.callbacks.on_status_update(f"正在执行 Maya 操作: {tool_name}...")
+        # 执行工具
+        self.state = AgentState.TOOL_EXECUTING
+        self.callbacks.on_status_update(f"正在执行 Maya 操作: {tool_name}...")
+        try:
             result = self.tool_executor(tool_name, arguments)
-            self.callbacks.on_tool_result(tool_name, result)
-            self._messages.append(
-                {
-                    "role": "tool",
-                    "tool_call_id": call.get("id"),
-                    "content": json.dumps(result, ensure_ascii=False),
-                }
-            )
-        return True
+        except KeyError:
+            err_msg = f"未知工具: {tool_name}，请检查工具名是否正确。"
+            self.callbacks.on_error(err_msg)
+            return f"[Error] {err_msg}"
+        except Exception as exc:
+            err_msg = f"工具执行异常: {exc}"
+            self.callbacks.on_error(err_msg)
+            return f"[Error] {err_msg}"
 
+        self.callbacks.on_tool_result(tool_name, result)
+
+        # 构建 Observation 文本
+        return json.dumps(result, ensure_ascii=False, indent=2)
+
+    # ------------------------------------------------------------------
+    # 辅助方法
+    # ------------------------------------------------------------------
     def _is_repeated(self, tool_name: str, arguments_json: str) -> bool:
         self._tool_window.append(ToolCallRecord(tool_name=tool_name, arguments_json=arguments_json))
-
         if len(self._tool_window) > self.tool_repeat_limit:
             self._tool_window.pop(0)
-
         if len(self._tool_window) < self.tool_repeat_limit:
             return False
-
         head = self._tool_window[0]
         return all(
             i.tool_name == head.tool_name and i.arguments_json == head.arguments_json
@@ -236,11 +302,9 @@ class AgentLoop:
         except Exception:
             return False
 
-
     def _trim_history(self) -> None:
         if len(self._messages) <= self.max_history_messages + 1:
             return
-
         system_msg = self._messages[0]
-        tail = self._messages[-self.max_history_messages :]
+        tail = self._messages[-self.max_history_messages:]
         self._messages = [system_msg, *tail]

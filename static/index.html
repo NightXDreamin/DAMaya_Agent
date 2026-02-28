@@ -3,175 +3,1083 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DAMaya Agent V1.2</title>
+  <title>DAMaya Agent | Premium</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Highlight.js Theme -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  
   <style>
     :root {
-      --bg: #0b1020; --panel: rgba(17, 24, 39, 0.7); --panel-2: rgba(30, 41, 59, 0.7);
-      --line: rgba(148, 163, 184, 0.25); --txt: #e2e8f0; --sub: #94a3b8;
-      --primary: #2563eb; --ok: #16a34a; --warn: #d97706; --err: #dc2626;
+      /* Palette */
+      --bg-primary: #09090b;
+      --bg-secondary: #18181b;
+      --bg-tertiary: #27272a;
+      
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-light: rgba(255, 255, 255, 0.12);
+      
+      --text-primary: #e2e8f0;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      
+      --accent-blue: #3b82f6;
+      --accent-blue-dim: rgba(59, 130, 246, 0.15);
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-orange: #f59e0b;
+      
+      /* Spacing & Radius */
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 6px;
+      
+      --timeline-width: 2px;
+      --timeline-color: var(--bg-tertiary);
     }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: "Noto Sans", "Segoe UI", sans-serif; color: var(--txt); background: radial-gradient(circle at 0% 0%, #1d4ed8 0%, #0b1020 45%), #0b1020; min-height: 100vh; }
-    .layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; padding: 16px; height: 100vh; }
-    .card { backdrop-filter: blur(12px); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; display: flex; flex-direction: column; overflow: hidden;}
-    .header { padding: 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
-    .title { font-size: 16px; font-weight: 600; }
-    button { border: 0; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
-    .session-list { margin: 0; padding: 10px; list-style: none; overflow: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; }
-    .session-item { padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: rgba(15, 23, 42, 0.6); cursor: pointer; }
-    .session-item.active { border-color: #60a5fa; background: rgba(37, 99, 235, .25); }
-    .session-title { font-size: 14px; }
-    .session-time { font-size: 12px; color: var(--sub); }
-    .messages { flex: 1; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; background: var(--panel-2); }
-    .bubble { max-width: 85%; border-radius: 12px; padding: 12px; font-size: 14px; line-height: 1.6; border: 1px solid var(--line); }
-    .bubble.user { align-self: flex-end; background: rgba(37, 99, 235, .25); }
-    .bubble.assistant { align-self: flex-start; background: rgba(15, 23, 42, .75); width: 100%; }
-    .bubble.tool { align-self: center; max-width: 95%; font-size: 12px; color: #cbd5e1; background: rgba(2, 6, 23, .65); }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
     
-    /* 修复 3：针对 Think 区块的精美样式 */
-    .think-box { margin-bottom: 12px; border-radius: 8px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255,255,255,0.05); overflow: hidden; }
-    .think-box summary { padding: 8px 12px; font-size: 13px; color: #a1a1aa; cursor: pointer; user-select: none; font-style: italic; }
-    .think-content { padding: 10px 12px; font-size: 13px; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.05); white-space: pre-wrap; }
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+    }
+
+    /* ---- Scrollbar ---- */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+
+    /* ---- Sidebar ---- */
+    .sidebar {
+      width: 260px;
+      background: var(--bg-primary);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: 20px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .logo {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-new {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-new:hover { background: #3f3f46; color: #fff; }
+
+    .session-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 8px;
+      list-style: none;
+    }
+
+    .session-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      transition: background 0.15s;
+      position: relative;
+      group: session-item;
+    }
+
+    .session-item:hover { background: var(--bg-secondary); }
+    .session-item.active { background: var(--bg-tertiary); }
+    .session-item.active .title { color: #fff; font-weight: 500; }
+
+    .session-item .title {
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 2px;
+    }
     
-    .status-area { padding: 8px 14px; font-size: 13px; color: #60a5fa; background: var(--panel); animation: pulse 2s infinite; display: none; }
-    @keyframes pulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 0.3; } }
-    .composer { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 12px; border-top: 1px solid var(--line); background: var(--panel); }
-    .composer textarea { resize: none; min-height: 52px; background: rgba(15, 23, 42, 0.85); color: var(--txt); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-family: inherit;}
+    .session-item .time { font-size: 11px; color: var(--text-muted); }
+    
+    .session-del {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      font-size: 14px;
+      transition: opacity 0.2s;
+    }
+    .session-item:hover .session-del { opacity: 1; }
+    .session-del:hover { color: var(--accent-red); }
+
+    /* ---- Main Area ---- */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background: radial-gradient(circle at 50% 0%, #1c1c1f 0%, #09090b 40%);
+    }
+
+    .timeline-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 40px 10%;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      scroll-behavior: smooth;
+    }
+
+    /* ---- Timeline Item Structure ---- */
+    .timeline-group {
+      position: relative;
+      padding-left: 24px; /* Space for the line */
+    }
+
+    /* Vertical Line */
+    .timeline-group::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 8px;
+      bottom: -32px; /* Connect to next group */
+      width: 2px;
+      background: var(--bg-tertiary);
+      border-radius: 2px;
+    }
+    .timeline-group:last-child::before { bottom: 0; }
+
+    /* User Query Styling */
+    .user-query {
+      position: relative;
+      margin-bottom: 24px;
+    }
+    /* Dot for User */
+    .user-query::after {
+      content: '';
+      position: absolute;
+      left: -29px;
+      top: 6px;
+      width: 12px;
+      height: 12px;
+      background: var(--text-primary);
+      border: 2px solid var(--bg-primary);
+      border-radius: 50%;
+      box-shadow: 0 0 0 2px var(--bg-tertiary);
+    }
+    
+    .user-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      display: inline-block;
+      max-width: 100%;
+    }
+
+    /* ---- Agent Response Steps ---- */
+    
+    /* 1. Thinking Node */
+    .step-think {
+      margin-bottom: 16px;
+      position: relative;
+    }
+    /* Dot for Think */
+    .step-think::after {
+      content: '';
+      position: absolute;
+      left: -28px;
+      top: 10px;
+      width: 10px;
+      height: 10px;
+      background: var(--bg-primary);
+      border: 2px solid var(--text-muted);
+      border-radius: 50%;
+    }
+
+    .think-card {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    
+    .think-header {
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.02);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      font-style: italic;
+      user-select: none;
+    }
+    .think-header:hover { color: var(--text-secondary); }
+    .think-icon { transition: transform 0.2s; }
+    .think-card.open .think-icon { transform: rotate(90deg); }
+    
+    .think-body {
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      border-top: 1px solid var(--border-subtle);
+      display: none;
+      white-space: pre-wrap;
+    }
+    .think-card.open .think-body { display: block; }
+
+    /* Active Glow Animation */
+    @keyframes glow {
+      0% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); }
+      50% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.6); }
+      100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); }
+    }
+    .step-think.active .think-card {
+      animation: glow 2s infinite;
+    }
+
+    /* 2. Tool Node */
+    .step-tool {
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .step-tool::after {
+      content: '';
+      position: absolute;
+      left: -28px;
+      top: 10px;
+      width: 10px;
+      height: 10px;
+      background: var(--bg-primary);
+      border: 2px solid var(--accent-orange);
+      border-radius: 50%;
+    }
+
+    .tool-card {
+      background: #151518;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      overflow: hidden;
+    }
+    .tool-header {
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-secondary);
+      background: rgba(255,255,255,0.02);
+      cursor: pointer;
+    }
+    .tool-name { font-weight: 600; color: var(--accent-orange); font-family: 'JetBrains Mono', monospace; }
+    .tool-status { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.05); }
+    
+    .tool-body {
+      padding: 10px 12px;
+      border-top: 1px solid var(--border-subtle);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      overflow-x: auto;
+      display: none;
+    }
+    .tool-card.open .tool-body { display: block; }
+    .tool-args { color: #a1a1aa; margin-bottom: 8px; }
+    .tool-result { color: #86efac; } /* Green for result */
+
+    /* 3. Final Answer Node */
+    .step-result {
+      position: relative;
+      margin-top: 8px;
+    }
+    .step-result::after {
+      content: '';
+      position: absolute;
+      left: -29px;
+      top: 0;
+      width: 12px;
+      height: 12px;
+      background: var(--accent-blue);
+      border: 2px solid var(--bg-primary);
+      border-radius: 50%;
+      box-shadow: 0 0 0 2px var(--accent-blue-dim);
+    }
+    
+    .markdown-body {
+      color: var(--text-primary);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .markdown-body p { margin-bottom: 1em; }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3 { 
+      margin-top: 1.5em; margin-bottom: 0.8em; color: #fff; font-weight: 600; 
+    }
+    .markdown-body code {
+      background: rgba(255,255,255,0.1);
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9em;
+      color: #fca5a5;
+    }
+    .markdown-body pre {
+      background: #0d0d0d !important;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 12px;
+      margin: 16px 0;
+      overflow-x: auto;
+    }
+    .markdown-body pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+      border-radius: 0;
+    }
+    .markdown-body ul, .markdown-body ol { padding-left: 20px; margin-bottom: 1em; }
+    .markdown-body li { margin-bottom: 0.4em; }
+
+    /* Approval Card */
+    .approval-card {
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid var(--accent-red);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .approval-title { color: var(--accent-red); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .approval-code { 
+      background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px; 
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary);
+      margin-bottom: 12px; white-space: pre-wrap;
+    }
+    .approval-actions { display: flex; gap: 12px; }
+    .btn-approve, .btn-reject {
+      flex: 1; padding: 8px; border-radius: 6px; font-weight: 500; cursor: pointer; border: none;
+      font-size: 13px; transition: opacity 0.2s;
+    }
+    .btn-approve { background: var(--accent-green); color: #fff; }
+    .btn-reject { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+    .btn-approve:hover, .btn-reject:hover { opacity: 0.9; }
+
+    /* ---- Composer (Input Area) ---- */
+    .composer-area {
+      padding: 24px 10%;
+      /* background: linear-gradient(to top, var(--bg-primary) 80%, transparent); */
+      background: var(--bg-primary);
+      border-top: 1px solid var(--border-subtle);
+    }
+    
+    .composer-wrapper {
+      position: relative;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .composer-wrapper:focus-within {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 2px var(--accent-blue-dim);
+    }
+
+    textarea {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      padding: 16px;
+      padding-right: 50px;
+      font-family: inherit;
+      font-size: 15px;
+      resize: none;
+      min-height: 56px;
+      max-height: 200px;
+      display: block;
+    }
+    
+    .send-btn {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      width: 32px;
+      height: 32px;
+      background: var(--accent-blue);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; background: var(--bg-tertiary); }
+    .send-btn:hover:not(:disabled) { transform: scale(1.05); }
+
+    /* Status Toast */
+    .status-toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(24, 24, 27, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-light);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .status-toast.visible { opacity: 1; }
+    .spinner {
+      width: 14px; height: 14px; border: 2px solid var(--border-light);
+      border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
   </style>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar card">
-      <div class="header"><div class="title">会话列表</div><button id="newSessionBtn">新建</button></div>
-      <ul id="sessionList" class="session-list"></ul>
-    </aside>
-    <section class="main card">
-      <div id="messages" class="messages"></div>
-      <div id="statusArea" class="status-area"></div>
-      <div class="composer">
-        <textarea id="input" placeholder="输入指令，例如：检查当前选中的骨骼"></textarea>
-        <button id="sendBtn">发送</button>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 17L12 22L22 17" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 12L12 17L22 12" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        DAMaya Agent
       </div>
-    </section>
-  </div>
+      <button class="btn-new" id="newSessionBtn" title="New Session">+</button>
+    </div>
+    <ul class="session-list" id="sessionList">
+      <!-- Session items will be injected here -->
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+    <div class="timeline-container" id="timelineContainer">
+      <!-- Timeline Groups will be injected here -->
+    </div>
+
+    <!-- Status Toast -->
+    <div id="statusToast" class="status-toast">
+      <div class="spinner"></div>
+      <span id="statusText">正在思考...</span>
+    </div>
+
+    <!-- Input Area -->
+    <div class="composer-area">
+      <div class="composer-wrapper">
+        <textarea id="input" placeholder="Ask Maya Agent..." rows="1"></textarea>
+        <button id="sendBtn" class="send-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
   <script>
-    const sessionListEl = document.getElementById('sessionList');
-    const messagesEl = document.getElementById('messages');
-    const statusArea = document.getElementById('statusArea');
-    const inputEl = document.getElementById('input');
-    
+    // ---- Config & Utils ----
+    marked.setOptions({
+      highlight: function(code, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+          return hljs.highlight(code, { language: lang }).value;
+        }
+        return hljs.highlightAuto(code).value;
+      },
+      breaks: true
+    });
+
+    const DOM = {
+      timeline: document.getElementById('timelineContainer'),
+      input: document.getElementById('input'),
+      sendBtn: document.getElementById('sendBtn'),
+      sessionList: document.getElementById('sessionList'),
+      statusToast: document.getElementById('statusToast'),
+      statusText: document.getElementById('statusText'),
+    };
+
+    // ---- State ----
     let currentSessionId = null;
     let ws = null;
-    let streamingBubble = null;
-    let currentStreamText = "";
+    let isBusy = false;
+    let activeTimelineGroup = null; // Current turn container
 
-    function setStatus(text) {
-      if(text) { statusArea.style.display = 'block'; statusArea.textContent = text; }
-      else { statusArea.style.display = 'none'; }
-    }
-
-    function escapeHtml(text) {
-      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    function renderMarkdown(text) {
-      let html = escapeHtml(text);
-      // 动态解析 <think>
-      html = html.replace(/&lt;think&gt;/g, '<details class="think-box" open><summary>🧠 思考过程 (点击折叠)</summary><div class="think-content">');
-      html = html.replace(/&lt;\/think&gt;/g, '</div></details>');
-      // 简单 Markdown 解析
-      html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      html = html.replace(/## (.*?)\n/g, '<h3 style="color:#60a5fa; margin: 10px 0 5px;">$1</h3>');
-      html = html.replace(/### (.*?)\n/g, '<h4 style="margin: 8px 0 4px;">$1</h4>');
-      html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.3);padding:2px 4px;border-radius:4px;color:#f87171;">$1</code>');
-      return html;
-    }
-
-    function addBubble(role, text) {
-      const el = document.createElement('div');
-      el.className = `bubble ${role}`;
-      el.innerHTML = role === 'assistant' ? renderMarkdown(text || '') : escapeHtml(text || '');
-      messagesEl.appendChild(el);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      return el;
-    }
-
-    async function fetchSessions() {
-      const resp = await fetch('/api/sessions');
-      const sessions = await resp.json();
-      sessionListEl.innerHTML = '';
-      for (const s of sessions) {
-        const li = document.createElement('li');
-        li.className = `session-item ${s.id === currentSessionId ? 'active' : ''}`;
-        li.innerHTML = `<div class="session-title">${escapeHtml(s.title || '新会话')}</div><div class="session-time">${new Date(s.created_at).toLocaleString()}</div>`;
-        li.onclick = () => switchSession(s.id);
-        sessionListEl.appendChild(li);
+    // ---- Timeline Builder ----
+    class TimelineManager {
+      constructor(container) {
+        this.container = container;
+        this.currentGroup = null;
+        this.currentThinkNode = null;
+        this.currentResultNode = null;
+        this.thinkContent = "";
+        this.resultContent = "";
       }
-      if (!currentSessionId && sessions.length) switchSession(sessions[0].id);
-    }
 
-    async function createSession() {
-      const resp = await fetch('/api/sessions', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({title: `会话 ${new Date().toLocaleString()}`}) });
-      const session = await resp.json();
-      await fetchSessions();
-      switchSession(session.id);
-    }
+      startNewGroup(userQuery) {
+        // Create Group Container
+        const group = document.createElement('div');
+        group.className = 'timeline-group';
+        
+        // User Query Node
+        const userNode = document.createElement('div');
+        userNode.className = 'user-query';
+        userNode.innerHTML = `<div class="user-card">${this.escapeHtml(userQuery)}</div>`;
+        group.appendChild(userNode);
 
-    async function switchSession(sessionId) {
-      currentSessionId = sessionId;
-      const resp = await fetch(`/api/sessions/${sessionId}/messages`);
-      const msgs = await resp.json();
-      messagesEl.innerHTML = '';
-      for (const m of msgs) {
-        if (m.role === 'user' || m.role === 'assistant') addBubble(m.role, m.content);
-        else addBubble('tool', `[执行工具] ${m.content}`);
+        this.container.appendChild(group);
+        this.currentGroup = group;
+        this.currentThinkNode = null;
+        this.currentResultNode = null;
+        this.thinkContent = "";
+        this.resultContent = "";
+        this.scrollToBottom();
       }
-      await ensureWsConnected();
-      fetchSessions();
+
+      // Handle Think Updates
+      updateThink(content, isAppend = true) {
+        if (!this.currentThinkNode) {
+          this.createThinkNode();
+        }
+        if (isAppend) {
+          this.thinkContent += content;
+        } else {
+          this.thinkContent = content;
+        }
+        
+        const body = this.currentThinkNode.querySelector('.think-body');
+        // Simple regex to clean <think> tags if they appear in content
+        const cleanContent = this.thinkContent.replace(/<\/?think>|<\/?thought_process>/g, '');
+        body.textContent = cleanContent;
+        
+        // Auto-scroll if near bottom
+        this.scrollToBottom();
+      }
+
+      createThinkNode() {
+        const node = document.createElement('div');
+        node.className = 'step-think active';
+        node.innerHTML = `
+          <div class="think-card open">
+            <div class="think-header" onclick="this.parentElement.classList.toggle('open')">
+              <span class="think-icon">▶</span>
+              <span>Thinking Process</span>
+            </div>
+            <div class="think-body"></div>
+          </div>
+        `;
+        // Insert before result node if exists, otherwise append
+        if (this.currentResultNode) {
+          this.currentGroup.insertBefore(node, this.currentResultNode);
+        } else {
+          this.currentGroup.appendChild(node);
+        }
+        this.currentThinkNode = node;
+      }
+
+      finishThink() {
+        if (this.currentThinkNode) {
+          this.currentThinkNode.classList.remove('active');
+          // Optional: Auto-collapse if content is very long, but let's keep it open for transparency or close it for cleanness
+          // this.currentThinkNode.querySelector('.think-card').classList.remove('open');
+        }
+      }
+
+      // Handle Result Updates (Stream)
+      updateResult(content, isAppend = true) {
+        // Check for leaked think tags in the stream and redirect to think node
+        // Regex to find <think>...</think> or <thought_process>...</thought_process>
+        // Note: This is a simple implementation. Complex streaming partial tags are handled by buffering in `handleStream`.
+        
+        if (!this.currentResultNode) {
+          this.createResultNode();
+        }
+        
+        if (isAppend) {
+          this.resultContent += content;
+        } else {
+          this.resultContent = content;
+        }
+
+        const body = this.currentResultNode.querySelector('.markdown-body');
+        // Clean any residual tags just in case
+        let cleanMarkdown = this.resultContent
+          .replace(/<think>[\s\S]*?<\/think>/g, '')
+          .replace(/<thought_process>[\s\S]*?<\/thought_process>/g, '')
+          .replace(/<final_answer>([\s\S]*?)<\/final_answer>/g, '$1');
+
+        body.innerHTML = marked.parse(cleanMarkdown);
+        this.scrollToBottom();
+      }
+
+      createResultNode() {
+        const node = document.createElement('div');
+        node.className = 'step-result';
+        node.innerHTML = `<div class="markdown-body"></div>`;
+        this.currentGroup.appendChild(node);
+        this.currentResultNode = node;
+      }
+
+      // Add Tool Call
+      addToolCall(name, args) {
+        const node = document.createElement('div');
+        node.className = 'step-tool';
+        node.dataset.toolName = name;
+        const argsStr = typeof args === 'string' ? args : JSON.stringify(args, null, 2);
+        
+        node.innerHTML = `
+          <div class="tool-card">
+            <div class="tool-header" onclick="this.parentElement.classList.toggle('open')">
+              <span class="tool-name">⚡ ${this.escapeHtml(name)}</span>
+              <span class="tool-status">Running...</span>
+            </div>
+            <div class="tool-body">
+              <div class="tool-args">${this.escapeHtml(argsStr)}</div>
+              <div class="tool-result"></div>
+            </div>
+          </div>
+        `;
+        
+        // Insert before result node
+        if (this.currentResultNode) {
+          this.currentGroup.insertBefore(node, this.currentResultNode);
+        } else {
+          this.currentGroup.appendChild(node);
+        }
+        this.scrollToBottom();
+        return node;
+      }
+
+      addGenericToolResult(content) {
+         const node = document.createElement('div');
+         node.className = 'step-tool';
+         node.innerHTML = `
+            <div class="tool-card">
+               <div class="tool-header" onclick="this.parentElement.classList.toggle('open')">
+                  <span class="tool-name" style="color:#34d399">✅ Tool Output</span>
+               </div>
+               <div class="tool-body" style="display:block">
+                 <div class="tool-result" style="color:#e2e8f0">${this.escapeHtml(content)}</div>
+               </div>
+            </div>`;
+         if (this.currentResultNode) {
+            this.currentGroup.insertBefore(node, this.currentResultNode);
+         } else {
+            this.currentGroup.appendChild(node);
+         }
+      }
+
+      updateToolResult(name, result) {
+        // Find the last tool node with this name that is "Running"
+        // In a real robust system we'd use IDs, but name is what we have from server
+        const tools = this.currentGroup.querySelectorAll(`.step-tool[data-tool-name="${name}"]`);
+        const node = tools[tools.length - 1]; // Assumption: strictly sequential
+        
+        if (node) {
+          const statusEl = node.querySelector('.tool-status');
+          const resultEl = node.querySelector('.tool-result');
+          
+          statusEl.textContent = "Completed";
+          statusEl.style.background = "rgba(16, 185, 129, 0.2)";
+          statusEl.style.color = "#34d399";
+          
+          const resultStr = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+          resultEl.textContent = "=> " + resultStr;
+        }
+      }
+      
+      addApprovalCard(name, preview) {
+        const div = document.createElement('div');
+        div.className = 'approval-card';
+        div.innerHTML = `
+          <div class="approval-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            Approval Required: ${this.escapeHtml(name)}
+          </div>
+          <div class="approval-code">${this.escapeHtml(preview)}</div>
+          <div class="approval-actions">
+            <button class="btn-approve">Approve</button>
+            <button class="btn-reject">Reject</button>
+          </div>
+        `;
+        
+        div.querySelector('.btn-approve').onclick = () => {
+          ws.send(JSON.stringify({ type: 'approval_response', approved: true }));
+          div.innerHTML = '<div style="color:var(--accent-green)">✅ Approved</div>';
+        };
+        div.querySelector('.btn-reject').onclick = () => {
+          ws.send(JSON.stringify({ type: 'approval_response', approved: false }));
+          div.innerHTML = '<div style="color:var(--accent-red)">❌ Rejected</div>';
+        };
+
+        if (this.currentResultNode) {
+          this.currentGroup.insertBefore(div, this.currentResultNode);
+        } else {
+          this.currentGroup.appendChild(div);
+        }
+        this.scrollToBottom();
+      }
+
+      scrollToBottom() {
+        this.container.scrollTop = this.container.scrollHeight;
+      }
+
+      escapeHtml(text) {
+        if (!text) return '';
+        return text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
     }
 
+    const timeline = new TimelineManager(DOM.timeline);
+
+    // ---- WebSocket Logic ----
     async function ensureWsConnected() {
       if (!currentSessionId) return;
-      if (ws) { ws.onclose = null; ws.close(); }
-      ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/chat/${currentSessionId}`);
+      if (ws) {
+        ws.close();
+        ws = null;
+      }
       
+      const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${protocol}://${location.host}/ws/chat/${currentSessionId}`);
+
       ws.onmessage = (event) => {
-        const payload = JSON.parse(event.data);
-        if (payload.type === 'status_update') {
-          setStatus(payload.content);
-        } else if (payload.type === 'stream') {
-          setStatus(""); // 有文字输出了就关掉状态条
-          if (!streamingBubble) {
-            streamingBubble = addBubble('assistant', '');
-            currentStreamText = "";
-          }
-          currentStreamText += (payload.content || '');
-          streamingBubble.innerHTML = renderMarkdown(currentStreamText);
-          messagesEl.scrollTop = messagesEl.scrollHeight;
-        } else if (payload.type === 'tool_call') {
-          addBubble('tool', `⚙️ 决定调用工具：${payload.name}`);
-        } else if (payload.type === 'done') {
-          streamingBubble = null;
-          setStatus("");
-        }
+        const data = JSON.parse(event.data);
+        handleWsMessage(data);
+      };
+      
+      ws.onclose = () => {
+        setBusy(false);
+        ws = null;
       };
     }
 
-    document.getElementById('sendBtn').onclick = () => {
-      const text = inputEl.value.trim();
-      if (!text || !ws) return;
-      addBubble('user', text);
-      streamingBubble = null;
+    // Buffer for streaming parsing
+    let streamBuffer = "";
+    let isThinkingMode = false;
+
+    function handleWsMessage(data) {
+      switch (data.type) {
+        case 'status_update':
+          showStatus(data.content);
+          break;
+          
+        case 'think':
+          // Explicit think event from backend
+          showStatus('Thinking...');
+          timeline.updateThink(data.content);
+          break;
+
+        case 'tool_call':
+          timeline.addToolCall(data.name, data.arguments);
+          break;
+
+        case 'tool_result':
+          timeline.updateToolResult(data.name, data.result);
+          break;
+          
+        case 'approval_required':
+          timeline.addApprovalCard(data.name, data.preview);
+          break;
+
+        case 'stream':
+          showStatus('Generating...');
+          handleStreamContent(data.content);
+          break;
+
+        case 'error':
+          // Show error in a red bubble or toast
+          showStatus('Error: ' + data.message);
+          // Also append to timeline as result
+          timeline.updateResult(`\n\n**Error:** ${data.message}`);
+          setBusy(false);
+          break;
+
+        case 'done':
+          hideStatus();
+          setBusy(false);
+          timeline.finishThink();
+          streamBuffer = ""; 
+          isThinkingMode = false;
+          break;
+      }
+    }
+
+    // Robust Stream Handler for Mixed Content
+    function handleStreamContent(chunk) {
+      // If the backend already separates 'think' events, 'stream' should mostly be final result.
+      // However, to be safe against leaked tags:
+      
+      streamBuffer += chunk;
+      
+      // We process the buffer.
+      // If we detect <think> start, we switch mode.
+      // If we detect </think> end, we switch back.
+      
+      // NOTE: This simple approach assumes tags don't nest and are well-formed enough.
+      // For a robust implementation, we scan the streamBuffer.
+      
+      // If we are NOT in thinking mode, check for <think> or <thought_process>
+      if (!isThinkingMode) {
+        const thinkStart = streamBuffer.match(/<(think|thought_process|reasoning)>/);
+        if (thinkStart) {
+          isThinkingMode = true;
+          // Render pre-tag content to Result
+          const prefix = streamBuffer.substring(0, thinkStart.index);
+          if (prefix) timeline.updateResult(prefix, false); // False because we might need to overwrite previous calls if we are reparsing full buffer? 
+          // Actually, we are appending chunks.
+          // Better strategy for stream: Append chunk, then regex on the LAST part or full accumulated text?
+          // To avoid complexity, let's trust the backend 'think' event MOSTLY, but if we see tags, we handle them.
+          
+          // Let's go with a simpler approach:
+          // Just feed everything to updateResult, but updateResult filters out tags.
+          // AND updateThink takes content if we are in think mode.
+        }
+      }
+      
+      // Refined Logic:
+      // Since we already have a specialized `timeline` class that holds state.
+      // We will parse the accumulated content in `timeline.resultContent` if we were using a single buffer.
+      // But here we get chunks.
+      
+      // Let's assume the backend does its job 90% of the time.
+      // If we see <think> in a stream chunk, it means the backend missed it.
+      
+      if (chunk.includes('<think>') || chunk.includes('<thought_process>')) {
+        isThinkingMode = true;
+      }
+      if (chunk.includes('</think>') || chunk.includes('</thought_process>')) {
+        isThinkingMode = false;
+        timeline.finishThink();
+      }
+      
+      if (isThinkingMode) {
+        timeline.updateThink(chunk);
+      } else {
+        timeline.updateResult(chunk);
+      }
+    }
+
+    function showStatus(text) {
+      DOM.statusText.textContent = text;
+      DOM.statusToast.classList.add('visible');
+    }
+    function hideStatus() {
+      DOM.statusToast.classList.remove('visible');
+    }
+
+    function setBusy(busy) {
+      isBusy = busy;
+      DOM.sendBtn.disabled = busy;
+      DOM.input.disabled = busy;
+      if (!busy) {
+        DOM.input.disabled = false;
+        setTimeout(() => DOM.input.focus(), 100);
+      }
+    }
+
+    // ---- Interaction ----
+    async function sendMessage() {
+      const text = DOM.input.value.trim();
+      if (!text || isBusy) return;
+      
+      setBusy(true);
+      DOM.input.value = '';
+      DOM.input.style.height = 'auto';
+      
+      // Start new group in timeline
+      timeline.startNewGroup(text);
+      
       ws.send(JSON.stringify({ text, use_rag: true }));
-      inputEl.value = '';
-    };
+    }
 
-    document.getElementById('newSessionBtn').onclick = createSession;
+    DOM.sendBtn.onclick = sendMessage;
+    DOM.input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    DOM.input.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+    });
 
-    (async function init() {
-      await fetchSessions();
-      if (!currentSessionId) createSession();
-    })();
+    // ---- Session Management ----
+    async function loadSessions() {
+      const res = await fetch('/api/sessions');
+      const sessions = await res.json();
+      DOM.sessionList.innerHTML = '';
+      
+      sessions.forEach(s => {
+        const li = document.createElement('li');
+        li.className = `session-item ${s.id === currentSessionId ? 'active' : ''}`;
+        li.innerHTML = `
+          <div class="title">${timeline.escapeHtml(s.title || 'New Session')}</div>
+          <div class="time">${new Date(s.created_at).toLocaleString()}</div>
+          <button class="session-del">✕</button>
+        `;
+        li.onclick = (e) => {
+          if (!e.target.classList.contains('session-del')) switchSession(s.id);
+        };
+        li.querySelector('.session-del').onclick = async (e) => {
+          e.stopPropagation();
+          if (confirm('Delete session?')) {
+            await fetch(`/api/sessions/${s.id}`, { method: 'DELETE' });
+            if (currentSessionId === s.id) currentSessionId = null;
+            loadSessions();
+          }
+        };
+        DOM.sessionList.appendChild(li);
+      });
+
+      if (!currentSessionId && sessions.length > 0) {
+        switchSession(sessions[0].id);
+      } else if (!currentSessionId && sessions.length === 0) {
+        createNewSession();
+      }
+    }
+
+    async function createNewSession() {
+      const res = await fetch('/api/sessions', { 
+        method: 'POST', 
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title: `Session ${new Date().toLocaleTimeString()}` })
+      });
+      const data = await res.json();
+      await loadSessions();
+      switchSession(data.id);
+    }
+    
+    document.getElementById('newSessionBtn').onclick = createNewSession;
+
+    async function switchSession(id) {
+      currentSessionId = id;
+      
+      // Update sidebar active state
+      // loadSessions will handle the active class update if called, 
+      // but let's just do it manually for speed or re-fetch.
+      loadSessions(); 
+
+      // Clear timeline
+      DOM.timeline.innerHTML = '';
+      
+      // Load messages
+      const res = await fetch(`/api/sessions/${id}/messages`);
+      const msgs = await res.json();
+      
+      // Reconstruct timeline
+      for (const msg of msgs) {
+        if (msg.role === 'user') {
+          timeline.startNewGroup(msg.content);
+        } else if (msg.role === 'assistant') {
+          if (!timeline.currentGroup) timeline.startNewGroup("(Continued...)");
+
+          // If content has <think>, separate it
+          const thinkMatch = msg.content.match(/<think>([\s\S]*?)<\/think>/);
+          let mainContent = msg.content;
+          
+          if (thinkMatch) {
+            timeline.updateThink(thinkMatch[1], false);
+            mainContent = mainContent.replace(thinkMatch[0], '');
+            timeline.finishThink();
+          }
+          
+          if (msg.tool_calls) {
+             let tools = msg.tool_calls;
+             if (typeof tools === 'string') {
+                try { tools = JSON.parse(tools); } catch(e) {}
+             }
+             if (Array.isArray(tools)) {
+                tools.forEach(t => timeline.addToolCall(t.function.name, t.function.arguments));
+             }
+          }
+
+          if (mainContent.trim()) {
+            timeline.updateResult(mainContent, false);
+          }
+        } else if (msg.role === 'tool') {
+           // Display historical tool outputs
+           if (!timeline.currentGroup) timeline.startNewGroup("(System)");
+           timeline.addGenericToolResult(msg.content);
+        }
+      }
+      
+      await ensureWsConnected();
+    }
+
+    // Init
+    loadSessions();
+
   </script>
 </body>
 </html>
