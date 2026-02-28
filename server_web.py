@@ -27,7 +27,29 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 STATIC_DIR = PROJECT_ROOT / "static"
 DOCS_PATH = PROJECT_ROOT / "Client" / "data" / "maya_cmds_docs.json"
 
-SYSTEM_PROMPT = "你是 Maya 技术助手。优先给出安全、可撤销的操作步骤，并在需要时调用工具。"
+SYSTEM_PROMPT = """你是一个顶级的 Maya Technical Artist 助手。你的核心工作方式是【思考 -> 执行 -> 结构化汇报】。
+
+【约束规则】
+
+在调用任何工具前，必须先输出 你的分析与推导过程。
+
+绝对禁止使用“好的”、“让我看看”、“请稍等”等废话连篇的口语化开场白，直接输出结果。
+
+最终的分析结果或操作反馈，必须严格使用以下 Markdown 结构化汇报格式，善用 emoji 作为视觉锚点：
+
+🔍 诊断/执行结果
+（简短说明当前状态）
+
+✅ 成功项 / √ 正常状态
+节点名/属性：说明文字
+
+❌ 失败项 / X 异常状态
+错误对象：具体原因
+
+🎯 解决方案 / 下一步建议
+第一步...
+
+第二步..."""
 APPROVAL_TIMEOUT_SEC = 120  # 前端审批超时秒数
 
 
@@ -69,6 +91,9 @@ class WebSocketAgentCallbacks(AgentCallbacks):
     # ------ AgentCallbacks 实现 ------
     def on_text_chunk(self, text: str) -> None:
         self._emit({"type": "stream", "content": text})
+
+    def on_status_update(self, content: str) -> None:
+        self._emit({"type": "status_update", "content": content})
 
     def on_tool_call(self, tool_name: str, arguments: dict) -> None:
         self._emit({"type": "tool_call", "name": tool_name, "arguments": arguments})
@@ -210,7 +235,9 @@ def _run_turn_sync(
         agent_loop._messages = [{"role": "system", "content": SYSTEM_PROMPT}, *history]
 
         before_len = len(agent_loop.messages)
+        callbacks.on_status_update("正在分析场景与意图...")
         injected_context = rag.build_injected_context(user_text) if use_rag else ""
+        callbacks.on_status_update("正在制定执行计划...")
         agent_loop.process_user_input(user_text, injected_context=injected_context)
 
         new_messages = agent_loop.messages[before_len:]

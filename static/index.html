@@ -3,186 +3,133 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DAMaya Agent</title>
+  <title>DAMaya Agent V1.3</title>
   <style>
-    /* ========== CSS Variables & Theme ========== */
     :root {
       --bg: #1E1E2E;
       --bg-secondary: #252536;
-      --bg-tertiary: #2A2A3D;
-      --surface: #2E2E42;
-      --border: rgba(255,255,255,0.08);
-      --border-active: rgba(43,125,233,0.5);
+      --bg-soft: #2b2b40;
       --text: #E0E0E0;
-      --text-secondary: #9CA3AF;
-      --text-muted: #6B7280;
+      --text-subtle: #9AA0AA;
       --accent: #2B7DE9;
-      --accent-hover: #3B8DF9;
-      --accent-subtle: rgba(43,125,233,0.15);
-      --user-bubble: rgba(43,125,233,0.18);
-      --assistant-bubble: #252536;
+      --accent-soft: rgba(43, 125, 233, .18);
+      --line: rgba(255,255,255,.08);
       --ok: #22C55E;
       --warn: #F59E0B;
-      --warn-bg: rgba(245,158,11,0.1);
-      --warn-border: rgba(245,158,11,0.35);
       --err: #EF4444;
-      --err-bg: rgba(239,68,68,0.1);
-      --tool-bg: rgba(255,255,255,0.04);
-      --tool-border: rgba(255,255,255,0.06);
-      --code-bg: #1a1a2e;
-      --scrollbar-thumb: rgba(255,255,255,0.12);
-      --scrollbar-track: transparent;
-      --shadow: 0 1px 3px rgba(0,0,0,0.3);
-      --radius: 12px;
-      --radius-sm: 8px;
+      --code: #1a1a2e;
+      --shadow: 0 2px 14px rgba(0,0,0,.25);
     }
 
     @media (prefers-color-scheme: light) {
       :root {
         --bg: #F9F9F9;
         --bg-secondary: #FFFFFF;
-        --bg-tertiary: #F3F4F6;
-        --surface: #FFFFFF;
-        --border: rgba(0,0,0,0.08);
-        --border-active: rgba(26,107,212,0.5);
+        --bg-soft: #F3F4F6;
         --text: #333333;
-        --text-secondary: #6B7280;
-        --text-muted: #9CA3AF;
+        --text-subtle: #6b7280;
         --accent: #1A6BD4;
-        --accent-hover: #1558B0;
-        --accent-subtle: rgba(26,107,212,0.1);
-        --user-bubble: rgba(26,107,212,0.12);
-        --assistant-bubble: #FFFFFF;
+        --accent-soft: rgba(26, 107, 212, .14);
+        --line: rgba(0,0,0,.08);
         --ok: #16A34A;
         --warn: #D97706;
-        --warn-bg: rgba(217,119,6,0.08);
-        --warn-border: rgba(217,119,6,0.3);
         --err: #DC2626;
-        --err-bg: rgba(220,38,38,0.08);
-        --tool-bg: rgba(0,0,0,0.03);
-        --tool-border: rgba(0,0,0,0.06);
-        --code-bg: #F3F4F6;
-        --scrollbar-thumb: rgba(0,0,0,0.15);
-        --scrollbar-track: transparent;
-        --shadow: 0 1px 3px rgba(0,0,0,0.08);
+        --code: #eef1f6;
+        --shadow: 0 2px 12px rgba(0,0,0,.08);
       }
     }
 
-    /* ========== Reset & Base ========== */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", sans-serif;
-      color: var(--text);
-      background: var(--bg);
+      margin: 0;
       height: 100vh;
       overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+      color: var(--text);
+      background: var(--bg);
     }
 
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
-
-    /* ========== Animations ========== */
     @keyframes slideUpFadeIn {
       from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+    @keyframes blinkDots {
+      0%, 80%, 100% { transform: scale(.75); opacity: .35; }
+      40% { transform: scale(1); opacity: 1; }
     }
 
-    .animate-in {
-      animation: slideUpFadeIn 0.3s ease-out both;
+    @keyframes breathe {
+      0%, 100% { opacity: .65; }
+      50% { opacity: 1; }
     }
 
-    /* ========== Layout ========== */
     .app {
       display: flex;
       height: 100vh;
     }
 
-    /* ========== Sidebar ========== */
     .sidebar {
       width: 260px;
       min-width: 260px;
+      border-right: 1px solid var(--line);
       background: var(--bg-secondary);
-      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
     }
 
     .sidebar-header {
-      padding: 16px;
-      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
     }
 
-    .sidebar-header .logo {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text);
-      letter-spacing: 0.3px;
-    }
+    .logo { font-weight: 700; font-size: 15px; }
+    .logo span { color: var(--accent); }
 
-    .sidebar-header .logo span {
-      color: var(--accent);
-    }
-
-    .btn-new {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 7px 14px;
-      font-size: 13px;
-      font-weight: 500;
-      color: #fff;
+    .btn {
+      border: 0;
       background: var(--accent);
-      border: none;
-      border-radius: var(--radius-sm);
+      color: #fff;
+      border-radius: 10px;
+      padding: 7px 12px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all .2s ease;
     }
 
-    .btn-new:hover {
-      background: var(--accent-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(43,125,233,0.3);
-    }
+    .btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
 
     .session-list {
-      list-style: none;
-      flex: 1;
-      overflow-y: auto;
+      margin: 0;
       padding: 8px;
+      list-style: none;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
     }
 
     .session-item {
-      padding: 10px 12px;
-      margin-bottom: 2px;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
+      padding: 10px 10px 10px 12px;
+      border-radius: 10px;
       border-left: 3px solid transparent;
-      transition: all 0.2s ease;
+      cursor: pointer;
+      transition: all .2s ease;
     }
 
-    .session-item:hover {
-      background: var(--accent-subtle);
-    }
+    .session-item:hover { background: var(--accent-soft); }
 
     .session-item.active {
-      background: var(--accent-subtle);
+      background: var(--accent-soft);
       border-left-color: var(--accent);
     }
 
     .session-title {
       font-size: 13px;
-      font-weight: 500;
-      color: var(--text);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -190,329 +137,291 @@
 
     .session-time {
       font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 3px;
+      color: var(--text-subtle);
+      margin-top: 4px;
     }
 
-    /* ========== Main Chat Area ========== */
     .main {
       flex: 1;
-      display: flex;
-      flex-direction: column;
       min-width: 0;
-    }
-
-    /* Status bar */
-    .status-bar {
-      padding: 10px 20px;
-      border-bottom: 1px solid var(--border);
-      font-size: 12px;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--bg-secondary);
-    }
-
-    .status-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--text-muted);
-      transition: background 0.3s ease;
-    }
-
-    .status-dot.connected { background: var(--ok); }
-    .status-dot.processing { background: var(--warn); animation: pulse 1.2s infinite; }
-    .status-dot.error { background: var(--err); }
-
-    /* Messages container */
-    .messages {
-      flex: 1;
-      overflow-y: auto;
-      scroll-behavior: smooth;
-      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
       background: var(--bg);
     }
 
-    /* ========== Bubbles ========== */
+    .messages {
+      flex: 1;
+      overflow: auto;
+      scroll-behavior: smooth;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .animate-in { animation: slideUpFadeIn .3s ease-out both; }
+
     .bubble {
       max-width: 75%;
-      border-radius: var(--radius);
-      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      line-height: 1.6;
       font-size: 14px;
-      line-height: 1.7;
       white-space: pre-wrap;
       word-break: break-word;
+      box-shadow: var(--shadow);
     }
 
     .bubble.user {
       align-self: flex-end;
-      background: var(--user-bubble);
-      border: 1px solid var(--border-active);
-      border-bottom-right-radius: 4px;
+      background: var(--accent-soft);
+      border-color: rgba(43, 125, 233, .35);
     }
 
     .bubble.assistant {
       align-self: flex-start;
-      background: var(--assistant-bubble);
-      border: 1px solid var(--border);
-      border-bottom-left-radius: 4px;
-      box-shadow: var(--shadow);
+      background: var(--bg-secondary);
     }
 
     .bubble.error {
       align-self: center;
       max-width: 90%;
-      background: var(--err-bg);
-      border: 1px solid rgba(239,68,68,0.25);
+      background: rgba(239, 68, 68, .08);
+      border-color: rgba(239, 68, 68, .35);
       color: var(--err);
-      font-size: 13px;
-      text-align: center;
     }
 
-    /* ========== Tool Call (折叠) ========== */
-    .tool-details {
-      align-self: center;
-      max-width: 90%;
-      width: 100%;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--tool-border);
-      background: var(--tool-bg);
-      font-size: 13px;
+    .agent-trace-card {
+      align-self: flex-start;
+      width: min(860px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--bg-secondary);
+      box-shadow: var(--shadow);
       overflow: hidden;
     }
 
-    .tool-details summary {
-      padding: 8px 14px;
-      cursor: pointer;
-      color: var(--text-secondary);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      list-style: none;
-      transition: all 0.2s ease;
-      user-select: none;
-    }
-
-    .tool-details summary::-webkit-details-marker { display: none; }
-
-    .tool-details summary::before {
-      content: '▸';
-      font-size: 11px;
-      transition: transform 0.2s ease;
-      display: inline-block;
-    }
-
-    .tool-details[open] summary::before {
-      transform: rotate(90deg);
-    }
-
-    .tool-details summary:hover {
-      background: rgba(255,255,255,0.04);
-    }
-
-    .tool-details .tool-icon {
-      font-size: 14px;
-    }
-
-    .tool-details .tool-label {
-      font-weight: 500;
-    }
-
-    .tool-details .tool-body {
-      padding: 0 14px 12px;
-    }
-
-    .tool-details pre {
-      margin: 0;
+    .trace-header {
       padding: 10px 12px;
-      background: var(--code-bg);
-      border-radius: var(--radius-sm);
       font-size: 12px;
-      font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      word-break: break-all;
-      overflow-x: auto;
-      color: var(--text-secondary);
+      color: var(--text-subtle);
+      border-bottom: 1px solid var(--line);
+      background: var(--bg-soft);
     }
 
-    /* ========== Approval Card ========== */
-    .approval-card {
-      align-self: center;
-      max-width: 90%;
-      width: 100%;
-      border-radius: var(--radius);
-      padding: 16px;
-      border: 1px solid var(--warn-border);
-      background: var(--warn-bg);
-    }
-
-    .approval-card .label {
-      font-weight: 600;
-      font-size: 14px;
-      color: var(--warn);
-      margin-bottom: 10px;
+    .trace-steps {
       display: flex;
-      align-items: center;
+      flex-direction: column;
       gap: 8px;
+      padding: 12px;
     }
 
-    .approval-card pre {
-      margin: 0 0 12px;
-      padding: 10px 12px;
-      background: var(--code-bg);
-      border-radius: var(--radius-sm);
-      font-size: 12px;
-      font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      word-break: break-all;
-      overflow-x: auto;
-      color: var(--text-secondary);
-    }
-
-    .approval-btns {
-      display: flex;
-      gap: 10px;
-    }
-
-    .approval-btns button {
-      flex: 1;
-      padding: 9px 16px;
-      border: none;
-      border-radius: var(--radius-sm);
+    .trace-step {
+      border: 1px solid var(--line);
+      background: var(--bg-soft);
+      border-radius: 10px;
+      padding: 10px;
       font-size: 13px;
-      font-weight: 600;
-      color: #fff;
+      transition: all .3s ease;
+    }
+
+    .trace-step summary {
       cursor: pointer;
-      transition: all 0.2s ease;
+      user-select: none;
+      transition: all .2s ease;
     }
 
-    .btn-approve {
-      background: var(--ok);
-    }
-    .btn-approve:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .trace-step summary:hover { color: var(--accent); }
 
-    .btn-reject {
-      background: var(--err);
-    }
-    .btn-reject:hover { filter: brightness(1.1); transform: translateY(-1px); }
-
-    .approval-btns button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-      transform: none !important;
+    .trace-step pre {
+      margin: 8px 0 0;
+      border-radius: 8px;
+      padding: 9px;
+      font-size: 12px;
+      background: var(--code);
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-family: "JetBrains Mono", "Consolas", monospace;
     }
 
-    /* ========== Composer ========== */
-    .composer {
-      padding: 16px 20px;
-      border-top: 1px solid var(--border);
+    .trace-final {
+      margin: 0 12px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
       background: var(--bg-secondary);
+      padding: 12px;
+      font-size: 15px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      display: none;
+      transition: all .3s ease;
     }
 
-    .composer-inner {
+    .trace-final.visible { display: block; }
+
+    .think-box {
+      margin: 0 0 10px;
+      border: 1px solid var(--line);
+      border-left: 3px solid rgba(128, 128, 128, .6);
+      border-radius: 10px;
+      background: color-mix(in oklab, var(--bg-soft) 92%, #000 8%);
+      transition: all .3s ease;
+    }
+
+    .think-box summary {
+      cursor: pointer;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: var(--text-subtle);
+      user-select: none;
+      transition: all .2s ease;
+    }
+
+    .think-box summary:hover {
+      color: var(--accent);
+    }
+
+    .think-content {
+      border-top: 1px dashed var(--line);
+      margin: 0 10px 10px;
+      padding: 8px 0 0 10px;
+      border-left: 2px solid rgba(128, 128, 128, .45);
+      color: var(--text-subtle);
+      font-style: italic;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .skeleton {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 2px;
+      transition: all .3s ease;
+    }
+
+    .skeleton-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--text-subtle);
+      animation: blinkDots 1.2s infinite;
+    }
+
+    .skeleton-dot:nth-child(2) { animation-delay: .18s; }
+    .skeleton-dot:nth-child(3) { animation-delay: .36s; }
+
+    .composer-wrap {
+      border-top: 1px solid var(--line);
+      background: var(--bg-secondary);
+      padding: 10px 16px 14px;
+    }
+
+    .agent-status-area {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      min-height: 24px;
+      margin-bottom: 8px;
+      border: 1px solid var(--line);
+      background: var(--bg-soft);
+      border-radius: 10px;
+      padding: 7px 10px;
+      font-size: 13px;
+      color: var(--text-subtle);
+      transition: all .3s ease;
+    }
+
+    .agent-status-area.show { display: flex; }
+
+    .agent-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--accent);
+      animation: breathe 1.2s ease-in-out infinite;
+    }
+
+    .composer {
+      border: 1px solid var(--line);
+      background: var(--bg-soft);
+      border-radius: 12px;
+      padding: 8px 10px;
       display: flex;
       align-items: flex-end;
       gap: 10px;
-      background: var(--bg-tertiary);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 8px 12px;
-      transition: border-color 0.2s ease;
+      transition: all .2s ease;
     }
 
-    .composer-inner:focus-within {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(43,125,233,0.15);
+    .composer:focus-within {
+      border-color: rgba(43,125,233,.45);
+      box-shadow: 0 0 0 2px rgba(43,125,233,.12);
     }
 
-    .composer-inner textarea {
+    .composer textarea {
       flex: 1;
-      border: none;
+      min-height: 24px;
+      max-height: 170px;
+      resize: none;
+      overflow: hidden;
+      border: 0;
       outline: none;
       background: transparent;
       color: var(--text);
       font: inherit;
       font-size: 14px;
       line-height: 1.5;
-      resize: none;
-      min-height: 24px;
-      max-height: 150px;
-      overflow-y: hidden;
     }
 
-    .composer-inner textarea::placeholder {
-      color: var(--text-muted);
-    }
-
-    .btn-send {
+    .send {
       width: 36px;
       height: 36px;
-      border: none;
       border-radius: 50%;
+      border: 0;
+      cursor: pointer;
       background: var(--accent);
       color: #fff;
-      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-shrink: 0;
-      transition: all 0.2s ease;
+      transition: all .2s ease;
     }
 
-    .btn-send:hover {
-      background: var(--accent-hover);
-      transform: scale(1.05);
-    }
+    .send:hover { transform: scale(1.04); filter: brightness(1.06); }
 
-    .btn-send:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-      transform: none !important;
-    }
-
-    .btn-send svg {
-      width: 18px;
-      height: 18px;
-    }
-
-    /* ========== Responsive ========== */
-    @media (max-width: 768px) {
+    @media (max-width: 780px) {
       .sidebar { display: none; }
+      .bubble { max-width: 90%; }
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="logo">DA<span>Maya</span></div>
-        <button class="btn-new" id="newSessionBtn">+ 新会话</button>
+        <button id="newSessionBtn" class="btn">+ 新会话</button>
       </div>
       <ul id="sessionList" class="session-list"></ul>
     </aside>
 
-    <!-- Main -->
     <main class="main">
-      <div class="status-bar">
-        <div class="status-dot" id="statusDot"></div>
-        <span id="statusText">未连接</span>
-      </div>
-
       <div id="messages" class="messages"></div>
 
-      <div class="composer">
-        <div class="composer-inner">
+      <div class="composer-wrap">
+        <div id="agentStatusArea" class="agent-status-area">
+          <span class="agent-status-dot"></span>
+          <span id="agentStatusText">✨ Agent 正在处理中...</span>
+        </div>
+        <div class="composer">
           <textarea id="input" rows="1" placeholder="输入指令，例如：帮我查询当前选择对象"></textarea>
-          <button class="btn-send" id="sendBtn" title="发送">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button id="sendBtn" class="send" title="发送">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"></line>
               <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
             </svg>
@@ -524,28 +433,21 @@
 
   <script>
     const sessionListEl = document.getElementById('sessionList');
-    const messagesEl   = document.getElementById('messages');
-    const statusDot    = document.getElementById('statusDot');
-    const statusText   = document.getElementById('statusText');
-    const inputEl      = document.getElementById('input');
-    const sendBtn      = document.getElementById('sendBtn');
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('sendBtn');
     const newSessionBtn = document.getElementById('newSessionBtn');
+    const agentStatusArea = document.getElementById('agentStatusArea');
+    const agentStatusText = document.getElementById('agentStatusText');
 
     let currentSessionId = null;
     let ws = null;
-    let streamingBubble = null;
+    let currentTrace = null;
 
-    /* ---- Helpers ---- */
     function escapeHtml(text) {
       const div = document.createElement('div');
-      div.textContent = text;
+      div.textContent = text ?? '';
       return div.innerHTML;
-    }
-
-    function setStatus(state, text) {
-      statusDot.className = 'status-dot';
-      if (state) statusDot.classList.add(state);
-      statusText.textContent = text;
     }
 
     function scrollToBottom() {
@@ -554,81 +456,223 @@
       });
     }
 
-    /* ---- Auto-resize textarea ---- */
-    inputEl.addEventListener('input', () => {
+    function autoResizeInput() {
       inputEl.style.height = 'auto';
-      inputEl.style.height = Math.min(inputEl.scrollHeight, 150) + 'px';
-      inputEl.style.overflowY = inputEl.scrollHeight > 150 ? 'auto' : 'hidden';
-    });
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 170) + 'px';
+      inputEl.style.overflowY = inputEl.scrollHeight > 170 ? 'auto' : 'hidden';
+    }
 
-    /* ---- Bubble Factories ---- */
+    function showAgentStatus(text) {
+      agentStatusText.textContent = `✨ Agent ${text}`;
+      agentStatusArea.classList.add('show');
+    }
+
+    function hideAgentStatus() {
+      agentStatusArea.classList.remove('show');
+    }
+
     function addBubble(role, text) {
       const el = document.createElement('div');
       el.className = `bubble ${role} animate-in`;
-      el.innerHTML = escapeHtml(text || '');
+      el.innerHTML = escapeHtml(text);
       messagesEl.appendChild(el);
       scrollToBottom();
       return el;
     }
 
-    function addToolDetails(payload) {
-      const isResult = payload.type === 'tool_result';
-      const toolName = payload.name || 'unknown';
-      const icon = isResult ? '✅' : '⚙️';
-      const label = isResult
-        ? `工具返回: ${toolName}`
-        : `调用工具: ${toolName}`;
-      const body = isResult
-        ? JSON.stringify(payload.result, null, 2)
-        : JSON.stringify(payload.arguments, null, 2);
-
-      const details = document.createElement('details');
-      details.className = 'tool-details animate-in';
-      details.innerHTML = `
-        <summary>
-          <span class="tool-icon">${icon}</span>
-          <span class="tool-label">${escapeHtml(label)}</span>
-        </summary>
-        <div class="tool-body">
-          <pre><code>${escapeHtml(body)}</code></pre>
-        </div>
-      `;
-      messagesEl.appendChild(details);
-      scrollToBottom();
-    }
-
-    function showApprovalCard(payload) {
+    function createTraceCard() {
       const card = document.createElement('div');
-      card.className = 'approval-card animate-in';
+      card.className = 'agent-trace-card animate-in';
       card.innerHTML = `
-        <div class="label">⚠️ 高危操作审批：${escapeHtml(payload.name || '')}</div>
-        <pre><code>${escapeHtml(payload.preview || '')}</code></pre>
-        <div class="approval-btns">
-          <button class="btn-approve">批准执行</button>
-          <button class="btn-reject">拒绝</button>
-        </div>
+        <div class="trace-header">Agent 执行链</div>
+        <div class="trace-steps"></div>
+        <div class="trace-final"></div>
       `;
+
+      const stepsEl = card.querySelector('.trace-steps');
+      const finalEl = card.querySelector('.trace-final');
+
+      const skeleton = document.createElement('div');
+      skeleton.className = 'skeleton';
+      skeleton.innerHTML = '<span class="skeleton-dot"></span><span class="skeleton-dot"></span><span class="skeleton-dot"></span>';
+      stepsEl.appendChild(skeleton);
+
       messagesEl.appendChild(card);
       scrollToBottom();
 
-      const approveBtn = card.querySelector('.btn-approve');
-      const rejectBtn  = card.querySelector('.btn-reject');
+      const finalTextNode = document.createTextNode('');
+      finalEl.appendChild(finalTextNode);
 
-      function respond(approved) {
-        approveBtn.disabled = true;
-        rejectBtn.disabled = true;
-        approveBtn.style.opacity = approved ? '1' : '0.3';
-        rejectBtn.style.opacity  = approved ? '0.3' : '1';
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'approval_response', approved }));
-        }
-      }
-
-      approveBtn.addEventListener('click', () => respond(true));
-      rejectBtn.addEventListener('click', () => respond(false));
+      currentTrace = {
+        card,
+        stepsEl,
+        finalEl,
+        finalTextNode,
+        skeleton,
+        stepIndex: 0,
+        hasStream: false,
+        streamBuffer: '',
+        inThink: false,
+        thinkDetails: null,
+        thinkContentEl: null,
+      };
+      return currentTrace;
     }
 
-    /* ---- Sessions ---- */
+    function clearSkeletonIfNeeded() {
+      if (!currentTrace || !currentTrace.skeleton) return;
+      currentTrace.skeleton.remove();
+      currentTrace.skeleton = null;
+    }
+
+    function appendTraceStepSummary(text) {
+      if (!currentTrace) return;
+      currentTrace.stepIndex += 1;
+      const item = document.createElement('div');
+      item.className = 'trace-step animate-in';
+      item.innerHTML = `<div>[步骤 ${currentTrace.stepIndex}] ${escapeHtml(text)}</div>`;
+      currentTrace.stepsEl.appendChild(item);
+      scrollToBottom();
+    }
+
+    function appendTraceStepDetails(summary, detailsText) {
+      if (!currentTrace) return;
+      currentTrace.stepIndex += 1;
+      const details = document.createElement('details');
+      details.className = 'trace-step animate-in';
+      details.innerHTML = `
+        <summary>[步骤 ${currentTrace.stepIndex}] ${escapeHtml(summary)}</summary>
+        <pre><code>${escapeHtml(detailsText)}</code></pre>
+      `;
+      currentTrace.stepsEl.appendChild(details);
+      scrollToBottom();
+    }
+
+    function ensureThinkBox() {
+      if (!currentTrace) return;
+      if (currentTrace.thinkDetails && currentTrace.thinkContentEl) return;
+
+      const details = document.createElement('details');
+      details.className = 'think-box';
+      const summary = document.createElement('summary');
+      summary.textContent = '🧠 思考过程 (点击展开)';
+      const content = document.createElement('div');
+      content.className = 'think-content';
+
+      details.appendChild(summary);
+      details.appendChild(content);
+      currentTrace.finalEl.appendChild(details);
+      currentTrace.thinkDetails = details;
+      currentTrace.thinkContentEl = content;
+    }
+
+    function appendOutsideText(text) {
+      if (!currentTrace || !text) return;
+      currentTrace.finalTextNode.data += text;
+    }
+
+    function appendThinkText(text) {
+      if (!currentTrace || !text) return;
+      ensureThinkBox();
+      currentTrace.thinkContentEl.textContent += text;
+    }
+
+    function consumeStreamBuffer(finalFlush = false) {
+      if (!currentTrace) return;
+      const openTag = '<think>';
+      const closeTag = '</think>';
+
+      while (true) {
+        if (!currentTrace.inThink) {
+          const openIdx = currentTrace.streamBuffer.indexOf(openTag);
+          if (openIdx === -1) {
+            if (finalFlush) {
+              appendOutsideText(currentTrace.streamBuffer);
+              currentTrace.streamBuffer = '';
+            } else {
+              const keep = openTag.length - 1;
+              if (currentTrace.streamBuffer.length > keep) {
+                appendOutsideText(currentTrace.streamBuffer.slice(0, -keep));
+                currentTrace.streamBuffer = currentTrace.streamBuffer.slice(-keep);
+              }
+            }
+            return;
+          }
+
+          appendOutsideText(currentTrace.streamBuffer.slice(0, openIdx));
+          currentTrace.streamBuffer = currentTrace.streamBuffer.slice(openIdx + openTag.length);
+          currentTrace.inThink = true;
+          ensureThinkBox();
+          continue;
+        }
+
+        const closeIdx = currentTrace.streamBuffer.indexOf(closeTag);
+        if (closeIdx === -1) {
+          if (finalFlush) {
+            appendThinkText(currentTrace.streamBuffer);
+            currentTrace.streamBuffer = '';
+            currentTrace.inThink = false;
+          } else {
+            const keep = closeTag.length - 1;
+            if (currentTrace.streamBuffer.length > keep) {
+              appendThinkText(currentTrace.streamBuffer.slice(0, -keep));
+              currentTrace.streamBuffer = currentTrace.streamBuffer.slice(-keep);
+            }
+          }
+          return;
+        }
+
+        appendThinkText(currentTrace.streamBuffer.slice(0, closeIdx));
+        currentTrace.streamBuffer = currentTrace.streamBuffer.slice(closeIdx + closeTag.length);
+        currentTrace.inThink = false;
+      }
+    }
+
+    function appendTraceStream(textChunk) {
+      if (!currentTrace) return;
+      clearSkeletonIfNeeded();
+      currentTrace.hasStream = true;
+      currentTrace.finalEl.classList.add('visible');
+      currentTrace.streamBuffer += (textChunk || '');
+      consumeStreamBuffer(false);
+      scrollToBottom();
+    }
+
+    function finalizeTraceStreamBuffer() {
+      if (!currentTrace) return;
+      consumeStreamBuffer(true);
+    }
+
+    function showApprovalCard(payload) {
+      if (!currentTrace) return;
+      currentTrace.stepIndex += 1;
+      const item = document.createElement('div');
+      item.className = 'trace-step animate-in';
+      item.innerHTML = `
+        <div><strong>[步骤 ${currentTrace.stepIndex}] ⚠️ 高危操作审批：${escapeHtml(payload.name || '')}</strong></div>
+        <pre><code>${escapeHtml(payload.preview || '')}</code></pre>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button class="btn" data-a="1" style="flex:1; background: var(--ok);">批准执行</button>
+          <button class="btn" data-a="0" style="flex:1; background: var(--err);">拒绝</button>
+        </div>
+      `;
+      currentTrace.stepsEl.appendChild(item);
+      scrollToBottom();
+
+      item.querySelectorAll('button[data-a]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const approved = btn.dataset.a === '1';
+          item.querySelectorAll('button').forEach((b) => {
+            b.disabled = true;
+            b.style.opacity = (b === btn) ? '1' : '0.35';
+          });
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'approval_response', approved }));
+          }
+        });
+      });
+    }
+
     async function fetchSessions() {
       const resp = await fetch('/api/sessions');
       const sessions = await resp.json();
@@ -642,7 +686,7 @@
       sessionListEl.innerHTML = '';
       for (const s of sessions) {
         const li = document.createElement('li');
-        li.className = `session-item${s.id === currentSessionId ? ' active' : ''}`;
+        li.className = `session-item ${s.id === currentSessionId ? 'active' : ''}`;
         li.innerHTML = `
           <div class="session-title">${escapeHtml(s.title || '新会话')}</div>
           <div class="session-time">${new Date(s.created_at).toLocaleString()}</div>
@@ -667,6 +711,8 @@
     async function switchSession(sessionId) {
       if (!sessionId) return;
       currentSessionId = sessionId;
+      hideAgentStatus();
+      currentTrace = null;
       await fetchMessages(sessionId);
       await ensureWsConnected();
       await fetchSessions();
@@ -680,24 +726,26 @@
         if (m.role === 'user' || m.role === 'assistant') {
           addBubble(m.role, m.content || '');
         } else if (m.role === 'tool') {
-          const details = document.createElement('details');
-          details.className = 'tool-details animate-in';
-          details.innerHTML = `
-            <summary>
-              <span class="tool-icon">📋</span>
-              <span class="tool-label">历史工具记录</span>
-            </summary>
-            <div class="tool-body">
-              <pre><code>${escapeHtml(m.content || '')}</code></pre>
-            </div>
-          `;
-          messagesEl.appendChild(details);
+          appendHistoricalTool(m.content || '');
         }
       }
       scrollToBottom();
     }
 
-    /* ---- WebSocket ---- */
+    function appendHistoricalTool(content) {
+      const details = document.createElement('details');
+      details.className = 'trace-step animate-in';
+      details.innerHTML = `
+        <summary>📋 历史工具记录</summary>
+        <pre><code>${escapeHtml(content)}</code></pre>
+      `;
+      const wrap = document.createElement('div');
+      wrap.className = 'agent-trace-card animate-in';
+      wrap.innerHTML = '<div class="trace-header">历史执行链片段</div><div class="trace-steps"></div>';
+      wrap.querySelector('.trace-steps').appendChild(details);
+      messagesEl.appendChild(wrap);
+    }
+
     async function ensureWsConnected() {
       if (!currentSessionId) return;
       if (ws) {
@@ -708,62 +756,79 @@
       const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
       ws = new WebSocket(`${protocol}://${location.host}/ws/chat/${currentSessionId}`);
 
-      ws.onopen = () => setStatus('connected', 'WebSocket 已连接');
-      ws.onerror = () => setStatus('error', 'WebSocket 错误');
-      ws.onclose = () => setStatus('', 'WebSocket 已断开');
-
       ws.onmessage = (event) => {
         const payload = JSON.parse(event.data);
 
-        if (payload.type === 'stream') {
-          if (!streamingBubble) {
-            streamingBubble = addBubble('assistant', '');
-          }
-          streamingBubble.innerHTML += escapeHtml(payload.content || '');
-          scrollToBottom();
+        if (payload.type === 'status_update') {
+          clearSkeletonIfNeeded();
+          showAgentStatus(payload.content || '正在处理...');
           return;
         }
 
-        if (payload.type === 'tool_call' || payload.type === 'tool_result') {
-          addToolDetails(payload);
+        if (payload.type === 'stream') {
+          appendTraceStream(payload.content || '');
+          return;
+        }
+
+        if (payload.type === 'tool_call') {
+          clearSkeletonIfNeeded();
+          appendTraceStepDetails(
+            `🧠 思考并决定调用工具 ${payload.name || ''}`,
+            JSON.stringify(payload.arguments ?? {}, null, 2)
+          );
+          return;
+        }
+
+        if (payload.type === 'tool_result') {
+          clearSkeletonIfNeeded();
+          appendTraceStepDetails(
+            `✅ 工具 ${payload.name || ''} 执行完成（点击展开详情）`,
+            JSON.stringify(payload.result ?? {}, null, 2)
+          );
           return;
         }
 
         if (payload.type === 'approval_required') {
+          clearSkeletonIfNeeded();
           showApprovalCard(payload);
           return;
         }
 
         if (payload.type === 'error') {
+          clearSkeletonIfNeeded();
           addBubble('error', payload.message || '未知错误');
-          setStatus('error', '出错');
+          hideAgentStatus();
           return;
         }
 
         if (payload.type === 'done') {
-          streamingBubble = null;
-          setStatus('connected', '处理完成');
+          clearSkeletonIfNeeded();
+          finalizeTraceStreamBuffer();
+          hideAgentStatus();
+          currentTrace = null;
         }
       };
     }
 
-    /* ---- Send Message ---- */
     function sendMessage() {
       const text = inputEl.value.trim();
       if (!text) return;
+
       if (!ws || ws.readyState !== WebSocket.OPEN) {
         addBubble('error', 'WebSocket 未连接，请先选择会话');
         return;
       }
 
       addBubble('user', text);
-      streamingBubble = null;
-      setStatus('processing', '处理中…');
+      createTraceCard();
+      showAgentStatus('正在接管任务...');
+
       ws.send(JSON.stringify({ text, use_rag: true }));
       inputEl.value = '';
-      inputEl.style.height = 'auto';
+      autoResizeInput();
     }
 
+    inputEl.addEventListener('input', autoResizeInput);
     sendBtn.addEventListener('click', sendMessage);
     inputEl.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -773,14 +838,12 @@
     });
     newSessionBtn.addEventListener('click', createSession);
 
-    /* ---- Init ---- */
     (async function init() {
-      setStatus('', '初始化中…');
       await fetchSessions();
       if (!currentSessionId) {
         await createSession();
       }
-      setStatus('connected', '就绪');
+      hideAgentStatus();
     })();
   </script>
 </body>

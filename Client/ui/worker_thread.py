@@ -58,7 +58,29 @@ class AgentWorker(QThread):
             selection_context_provider=lambda: self.registry.execute_tool("query_selection_context", {}),
         )
 
-        system_prompt = "你是 Maya 技术助手。优先给出安全、可撤销的操作步骤，并在需要时调用工具。"
+        system_prompt = """你是一个顶级的 Maya Technical Artist 助手。你的核心工作方式是【思考 -> 执行 -> 结构化汇报】。
+
+【约束规则】
+
+在调用任何工具前，必须先输出 你的分析与推导过程。
+
+绝对禁止使用“好的”、“让我看看”、“请稍等”等废话连篇的口语化开场白，直接输出结果。
+
+最终的分析结果或操作反馈，必须严格使用以下 Markdown 结构化汇报格式，善用 emoji 作为视觉锚点：
+
+🔍 诊断/执行结果
+（简短说明当前状态）
+
+✅ 成功项 / √ 正常状态
+节点名/属性：说明文字
+
+❌ 失败项 / X 异常状态
+错误对象：具体原因
+
+🎯 解决方案 / 下一步建议
+第一步...
+
+第二步..."""
         self.loop = AgentLoop(
             llm_client=self.llm_client,
             tool_executor=self.registry.execute_tool,
@@ -98,6 +120,9 @@ class AgentWorker(QThread):
 
     def on_text_chunk(self, text: str) -> None:
         self.text_chunk.emit(text)
+
+    def on_status_update(self, content: str) -> None:
+        self.status_update.emit(content)
 
     def on_tool_call(self, tool_name: str, arguments: dict) -> None:
         self.tool_call.emit(tool_name, json.dumps(arguments, ensure_ascii=False))
