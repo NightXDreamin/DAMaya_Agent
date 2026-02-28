@@ -186,7 +186,7 @@
       top: 8px;
       bottom: -32px; /* Connect to next group */
       width: 2px;
-      background: var(--bg-tertiary);
+      background: rgba(255, 255, 255, 0.1);
       border-radius: 2px;
     }
     .timeline-group:last-child::before { bottom: 0; }
@@ -207,7 +207,7 @@
       background: var(--text-primary);
       border: 2px solid var(--bg-primary);
       border-radius: 50%;
-      box-shadow: 0 0 0 2px var(--bg-tertiary);
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
     }
     
     .user-card {
@@ -267,10 +267,10 @@
     
     .think-body {
       padding: 16px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
       line-height: 1.6;
-      color: var(--text-secondary);
+      color: #a1a1aa;
       border-top: 1px solid var(--border-subtle);
       display: none;
       white-space: pre-wrap;
@@ -287,54 +287,58 @@
       animation: glow 2s infinite;
     }
 
-    /* 2. Tool Node */
-    .step-tool {
-      margin-bottom: 16px;
-      position: relative;
-    }
-    .step-tool::after {
-      content: '';
-      position: absolute;
-      left: -28px;
-      top: 10px;
-      width: 10px;
-      height: 10px;
-      background: var(--bg-primary);
-      border: 2px solid var(--accent-orange);
-      border-radius: 50%;
-    }
-
-    .tool-card {
-      background: #151518;
+    /* 2. Tool & Observation Boxes (Collapsible) */
+    details.tool-box, details.obs-box {
+      margin-bottom: 12px;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
-      font-size: 13px;
+      background: rgba(255, 255, 255, 0.02);
       overflow: hidden;
+      font-size: 13px;
+      position: relative;
     }
-    .tool-header {
+    
+    /* Dot for Tool/Obs in timeline if they are top-level steps, 
+       but here we assume they are children of a group/message.
+       We can add a pseudo-element if we want them to mark the timeline line too.
+    */
+    
+    summary {
       padding: 8px 12px;
+      cursor: pointer;
+      user-select: none;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      color: var(--text-secondary);
-      background: rgba(255,255,255,0.02);
-      cursor: pointer;
+      gap: 8px;
+      font-weight: 500;
+      transition: background 0.15s;
+      list-style: none; /* Hide default arrow */
     }
-    .tool-name { font-weight: 600; color: var(--accent-orange); font-family: 'JetBrains Mono', monospace; }
-    .tool-status { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.05); }
+    summary::-webkit-details-marker { display: none; }
+    summary:hover { background: rgba(255, 255, 255, 0.05); }
+
+    .tool-box summary { color: #a78bfa; /* Purple-ish */ }
+    .obs-box summary { color: var(--text-muted); }
     
-    .tool-body {
-      padding: 10px 12px;
+    .obs-box.error { border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05); }
+    .obs-box.error summary { color: #fca5a5; }
+
+    .tool-content, .obs-content {
+      padding: 12px;
       border-top: 1px solid var(--border-subtle);
       font-family: 'JetBrains Mono', monospace;
       font-size: 12px;
-      color: var(--text-muted);
-      overflow-x: auto;
-      display: none;
+      line-height: 1.5;
+      color: var(--text-secondary);
+      background: #0d0d0d;
     }
-    .tool-card.open .tool-body { display: block; }
-    .tool-args { color: #a1a1aa; margin-bottom: 8px; }
-    .tool-result { color: #86efac; } /* Green for result */
+    
+    .tool-content pre, .obs-content pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+      overflow-x: auto;
+    }
 
     /* 3. Final Answer Node */
     .step-result {
@@ -524,7 +528,7 @@
     <!-- Status Toast -->
     <div id="statusToast" class="status-toast">
       <div class="spinner"></div>
-      <span id="statusText">正在思考...</span>
+      <span id="statusText">Thinking...</span>
     </div>
 
     <!-- Input Area -->
@@ -567,7 +571,6 @@
     let currentSessionId = null;
     let ws = null;
     let isBusy = false;
-    let activeTimelineGroup = null; // Current turn container
 
     // ---- Timeline Builder ----
     class TimelineManager {
@@ -612,11 +615,9 @@
         }
         
         const body = this.currentThinkNode.querySelector('.think-body');
-        // Simple regex to clean <think> tags if they appear in content
-        const cleanContent = this.thinkContent.replace(/<\/?think>|<\/?thought_process>/g, '');
-        body.textContent = cleanContent;
+        body.textContent = this.thinkContent;
         
-        // Auto-scroll if near bottom
+        // Auto-scroll
         this.scrollToBottom();
       }
 
@@ -644,17 +645,11 @@
       finishThink() {
         if (this.currentThinkNode) {
           this.currentThinkNode.classList.remove('active');
-          // Optional: Auto-collapse if content is very long, but let's keep it open for transparency or close it for cleanness
-          // this.currentThinkNode.querySelector('.think-card').classList.remove('open');
         }
       }
 
       // Handle Result Updates (Stream)
       updateResult(content, isAppend = true) {
-        // Check for leaked think tags in the stream and redirect to think node
-        // Regex to find <think>...</think> or <thought_process>...</thought_process>
-        // Note: This is a simple implementation. Complex streaming partial tags are handled by buffering in `handleStream`.
-        
         if (!this.currentResultNode) {
           this.createResultNode();
         }
@@ -665,14 +660,15 @@
           this.resultContent = content;
         }
 
-        const body = this.currentResultNode.querySelector('.markdown-body');
-        // Clean any residual tags just in case
-        let cleanMarkdown = this.resultContent
-          .replace(/<think>[\s\S]*?<\/think>/g, '')
-          .replace(/<thought_process>[\s\S]*?<\/thought_process>/g, '')
-          .replace(/<final_answer>([\s\S]*?)<\/final_answer>/g, '$1');
+        // Filter hallucinations of [Observation]: ... in the stream
+        // Instead of injecting HTML, convert it to Markdown Blockquote to avoid mixed content issues
+        let displayContent = this.resultContent;
+        displayContent = displayContent.replace(/\[Observation\]:?([\s\S]*?)(?=(\n#|\n\[|$))/g, (match, p1) => {
+             return `\n> 📋 **Observation (Detected)**\n> ${p1.trim().replace(/\n/g, '\n> ')}\n`;
+        });
 
-        body.innerHTML = marked.parse(cleanMarkdown);
+        const body = this.currentResultNode.querySelector('.markdown-body');
+        body.innerHTML = marked.parse(displayContent);
         this.scrollToBottom();
       }
 
@@ -684,72 +680,51 @@
         this.currentResultNode = node;
       }
 
-      // Add Tool Call
+      // Add Tool Call (New Collapsible Style)
       addToolCall(name, args) {
-        const node = document.createElement('div');
-        node.className = 'step-tool';
-        node.dataset.toolName = name;
+        const details = document.createElement('details');
+        details.className = 'tool-box';
+        
         const argsStr = typeof args === 'string' ? args : JSON.stringify(args, null, 2);
         
-        node.innerHTML = `
-          <div class="tool-card">
-            <div class="tool-header" onclick="this.parentElement.classList.toggle('open')">
-              <span class="tool-name">⚡ ${this.escapeHtml(name)}</span>
-              <span class="tool-status">Running...</span>
-            </div>
-            <div class="tool-body">
-              <div class="tool-args">${this.escapeHtml(argsStr)}</div>
-              <div class="tool-result"></div>
-            </div>
+        details.innerHTML = `
+          <summary>⚙️ 执行工具: ${this.escapeHtml(name)}</summary>
+          <div class="tool-content">
+            <pre>${this.escapeHtml(argsStr)}</pre>
           </div>
         `;
         
-        // Insert before result node
         if (this.currentResultNode) {
-          this.currentGroup.insertBefore(node, this.currentResultNode);
+          this.currentGroup.insertBefore(details, this.currentResultNode);
         } else {
-          this.currentGroup.appendChild(node);
+          this.currentGroup.appendChild(details);
         }
         this.scrollToBottom();
-        return node;
       }
 
-      addGenericToolResult(content) {
-         const node = document.createElement('div');
-         node.className = 'step-tool';
-         node.innerHTML = `
-            <div class="tool-card">
-               <div class="tool-header" onclick="this.parentElement.classList.toggle('open')">
-                  <span class="tool-name" style="color:#34d399">✅ Tool Output</span>
-               </div>
-               <div class="tool-body" style="display:block">
-                 <div class="tool-result" style="color:#e2e8f0">${this.escapeHtml(content)}</div>
-               </div>
-            </div>`;
+      // Add Observation (New Collapsible Style)
+      addObservation(name, result) {
+         const details = document.createElement('details');
+         details.className = 'obs-box';
+         
+         const resultStr = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+         const isError = resultStr.includes("Traceback") || resultStr.includes("Error:");
+         
+         if (isError) details.classList.add('error');
+
+         details.innerHTML = `
+           <summary>${isError ? '⚠️' : '📋'} 观察结果: ${this.escapeHtml(name)}</summary>
+           <div class="obs-content">
+             <pre>${this.escapeHtml(resultStr)}</pre>
+           </div>
+         `;
+
          if (this.currentResultNode) {
-            this.currentGroup.insertBefore(node, this.currentResultNode);
+            this.currentGroup.insertBefore(details, this.currentResultNode);
          } else {
-            this.currentGroup.appendChild(node);
+            this.currentGroup.appendChild(details);
          }
-      }
-
-      updateToolResult(name, result) {
-        // Find the last tool node with this name that is "Running"
-        // In a real robust system we'd use IDs, but name is what we have from server
-        const tools = this.currentGroup.querySelectorAll(`.step-tool[data-tool-name="${name}"]`);
-        const node = tools[tools.length - 1]; // Assumption: strictly sequential
-        
-        if (node) {
-          const statusEl = node.querySelector('.tool-status');
-          const resultEl = node.querySelector('.tool-result');
-          
-          statusEl.textContent = "Completed";
-          statusEl.style.background = "rgba(16, 185, 129, 0.2)";
-          statusEl.style.color = "#34d399";
-          
-          const resultStr = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-          resultEl.textContent = "=> " + resultStr;
-        }
+         this.scrollToBottom();
       }
       
       addApprovalCard(name, preview) {
@@ -823,28 +798,26 @@
       };
     }
 
-    // Buffer for streaming parsing
-    let streamBuffer = "";
-    let isThinkingMode = false;
-
     function handleWsMessage(data) {
       switch (data.type) {
         case 'status_update':
           showStatus(data.content);
           break;
           
-        case 'think':
-          // Explicit think event from backend
+        case 'think_stream':
+          // Append to think box
           showStatus('Thinking...');
           timeline.updateThink(data.content);
           break;
 
         case 'tool_call':
+          // Finish think state if active
+          timeline.finishThink();
           timeline.addToolCall(data.name, data.arguments);
           break;
 
         case 'tool_result':
-          timeline.updateToolResult(data.name, data.result);
+          timeline.addObservation(data.name, data.result);
           break;
           
         case 'approval_required':
@@ -852,14 +825,14 @@
           break;
 
         case 'stream':
+          // Finish think state if active
+          timeline.finishThink();
           showStatus('Generating...');
-          handleStreamContent(data.content);
+          timeline.updateResult(data.content);
           break;
 
         case 'error':
-          // Show error in a red bubble or toast
           showStatus('Error: ' + data.message);
-          // Also append to timeline as result
           timeline.updateResult(`\n\n**Error:** ${data.message}`);
           setBusy(false);
           break;
@@ -868,64 +841,7 @@
           hideStatus();
           setBusy(false);
           timeline.finishThink();
-          streamBuffer = ""; 
-          isThinkingMode = false;
           break;
-      }
-    }
-
-    // Robust Stream Handler for Mixed Content
-    function handleStreamContent(chunk) {
-      // If the backend already separates 'think' events, 'stream' should mostly be final result.
-      // However, to be safe against leaked tags:
-      
-      streamBuffer += chunk;
-      
-      // We process the buffer.
-      // If we detect <think> start, we switch mode.
-      // If we detect </think> end, we switch back.
-      
-      // NOTE: This simple approach assumes tags don't nest and are well-formed enough.
-      // For a robust implementation, we scan the streamBuffer.
-      
-      // If we are NOT in thinking mode, check for <think> or <thought_process>
-      if (!isThinkingMode) {
-        const thinkStart = streamBuffer.match(/<(think|thought_process|reasoning)>/);
-        if (thinkStart) {
-          isThinkingMode = true;
-          // Render pre-tag content to Result
-          const prefix = streamBuffer.substring(0, thinkStart.index);
-          if (prefix) timeline.updateResult(prefix, false); // False because we might need to overwrite previous calls if we are reparsing full buffer? 
-          // Actually, we are appending chunks.
-          // Better strategy for stream: Append chunk, then regex on the LAST part or full accumulated text?
-          // To avoid complexity, let's trust the backend 'think' event MOSTLY, but if we see tags, we handle them.
-          
-          // Let's go with a simpler approach:
-          // Just feed everything to updateResult, but updateResult filters out tags.
-          // AND updateThink takes content if we are in think mode.
-        }
-      }
-      
-      // Refined Logic:
-      // Since we already have a specialized `timeline` class that holds state.
-      // We will parse the accumulated content in `timeline.resultContent` if we were using a single buffer.
-      // But here we get chunks.
-      
-      // Let's assume the backend does its job 90% of the time.
-      // If we see <think> in a stream chunk, it means the backend missed it.
-      
-      if (chunk.includes('<think>') || chunk.includes('<thought_process>')) {
-        isThinkingMode = true;
-      }
-      if (chunk.includes('</think>') || chunk.includes('</thought_process>')) {
-        isThinkingMode = false;
-        timeline.finishThink();
-      }
-      
-      if (isThinkingMode) {
-        timeline.updateThink(chunk);
-      } else {
-        timeline.updateResult(chunk);
       }
     }
 
@@ -1024,10 +940,6 @@
 
     async function switchSession(id) {
       currentSessionId = id;
-      
-      // Update sidebar active state
-      // loadSessions will handle the active class update if called, 
-      // but let's just do it manually for speed or re-fetch.
       loadSessions(); 
 
       // Clear timeline
@@ -1037,14 +949,13 @@
       const res = await fetch(`/api/sessions/${id}/messages`);
       const msgs = await res.json();
       
-      // Reconstruct timeline
       for (const msg of msgs) {
         if (msg.role === 'user') {
           timeline.startNewGroup(msg.content);
         } else if (msg.role === 'assistant') {
           if (!timeline.currentGroup) timeline.startNewGroup("(Continued...)");
 
-          // If content has <think>, separate it
+          // Historical message parsing
           const thinkMatch = msg.content.match(/<think>([\s\S]*?)<\/think>/);
           let mainContent = msg.content;
           
@@ -1068,9 +979,8 @@
             timeline.updateResult(mainContent, false);
           }
         } else if (msg.role === 'tool') {
-           // Display historical tool outputs
            if (!timeline.currentGroup) timeline.startNewGroup("(System)");
-           timeline.addGenericToolResult(msg.content);
+           timeline.addObservation("History Result", msg.content);
         }
       }
       

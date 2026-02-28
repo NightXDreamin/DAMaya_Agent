@@ -32,7 +32,7 @@ DOCS_PATH = PROJECT_ROOT / "Client" / "data" / "maya_cmds_docs.json"
 SYSTEM_PROMPT = """你是一个顶级的 Maya Technical Artist 助手。你的核心工作方式是【思考 -> 执行 -> 结构化汇报】。
 
 【约束规则】
-1. 在调用任何工具或回答前，必须先用 <think> 标签输出你的分析与推导过程。
+1. 在调用任何工具或回答前，必须先用 <think> (请保留英文标签，不要使用 <思考>) 标签输出你的分析与推导过程。
 2. 绝对禁止使用"好的"、"让我看看"等废话口语开场白。
 3. 最终结果必须使用 Markdown 结构化汇报，善用 emoji 作为视觉锚点：
 
@@ -80,7 +80,7 @@ class WebSocketAgentCallbacks(AgentCallbacks):
         self._emit({"type": "stream", "content": text})
 
     def on_think_chunk(self, text: str) -> None:
-        self._emit({"type": "think", "content": text})
+        self._emit({"type": "think_stream", "content": text})
 
     def on_tool_call(self, tool_name: str, arguments: dict[str, Any]) -> None:
         self._emit({"type": "tool_call", "name": tool_name, "arguments": arguments})

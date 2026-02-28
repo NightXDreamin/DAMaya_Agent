@@ -50,10 +50,11 @@ class ToolCallRecord:
 # ---------------------------------------------------------------------------
 # ReAct XML 标签正则
 # ---------------------------------------------------------------------------
-_RE_ACTION = re.compile(r"<action>\s*(\{.*?\})\s*</action>", re.DOTALL)
-_RE_FINAL_ANSWER = re.compile(r"<final_answer>(.*?)</final_answer>", re.DOTALL)
-_RE_THINK_OPEN = re.compile(r"<think>")
-_RE_THINK_CLOSE = re.compile(r"</think>")
+# 允许标签带有空白字符或属性，如 <action tool="..."> 或 < action >
+_RE_ACTION = re.compile(r"<\s*action(?:\s+[^>]*)?>\s*(\{.*?\})\s*<\s*/\s*action\s*>", re.DOTALL | re.IGNORECASE)
+_RE_FINAL_ANSWER = re.compile(r"<\s*final_answer(?:\s+[^>]*)?>(.*?)<\s*/\s*final_answer\s*>", re.DOTALL | re.IGNORECASE)
+_RE_THINK_OPEN = re.compile(r"<\s*(?:think|思考)(?:\s+[^>]*)?>", re.IGNORECASE)
+_RE_THINK_CLOSE = re.compile(r"<\s*/\s*(?:think|思考)\s*>", re.IGNORECASE)
 
 
 def _build_react_system_prompt(
@@ -185,41 +186,105 @@ class AgentLoop:
     # ------------------------------------------------------------------
     def _stream_once_text(self) -> str:
         self.state = AgentState.STREAMING
-        text_parts: list[str] = []
-        in_think = False
+        full_text_parts: list[str] = []
+        
+        # 简单状态机
+        # 状态：NORMAL, THINKING, ACTION, ANSWERING (ANSWERING 和 NORMAL 类似)
+        current_state = "NORMAL"
+        buffer = ""
 
+        # 正则用于检测标签
+        # 增强版正则：支持空白、属性、大小写，以及中文 <思考> 标签
+        re_tags = re.compile(r"<\s*/?\s*(think|思考|action|final_answer)(?:\s+[^>]*)?>", re.IGNORECASE)
+        
         for event in self.llm_client.chat_stream(self._messages):
             if event.type == "text" and event.content:
                 chunk = event.content
-                text_parts.append(chunk)
+                full_text_parts.append(chunk)
+                buffer += chunk
 
-                # 实时检测 <think> / </think> 标签进行分流
-                remaining = chunk
-                while remaining:
-                    if not in_think:
-                        m_open = _RE_THINK_OPEN.search(remaining)
-                        if m_open:
-                            before = remaining[:m_open.start()]
-                            if before:
-                                self.callbacks.on_text_chunk(before)
-                            in_think = True
-                            remaining = remaining[m_open.end():]
+                while True:
+                    match = re_tags.search(buffer)
+                    if not match:
+                        break
+                    
+                    tag = match.group()
+                    start, end = match.span()
+                    
+                    # 标签前的内容处理
+                    pre_content = buffer[:start]
+                    
+                    if current_state == "THINKING":
+                        if pre_content:
+                            self.callbacks.on_think_chunk(pre_content)
+                    elif current_state == "ACTION":
+                        # Action 内容静默缓冲，不发送给前端
+                        pass
+                    else: # NORMAL / ANSWERING
+                        if pre_content:
+                            self.callbacks.on_text_chunk(pre_content)
+
+                    # 状态转换逻辑
+                    tag_lower = tag.lower()
+                    if "think" in tag_lower or "思考" in tag_lower:
+                        if "/" in tag_lower:
+                            current_state = "NORMAL"
                         else:
-                            self.callbacks.on_text_chunk(remaining)
-                            remaining = ""
+                            current_state = "THINKING"
+                    elif "action" in tag_lower:
+                        if "/" in tag_lower:
+                            current_state = "NORMAL"
+                        else:
+                            current_state = "ACTION"
+                    elif "final_answer" in tag_lower:
+                        if "/" in tag_lower:
+                            current_state = "NORMAL"
+                        else:
+                            current_state = "ANSWERING"
+                    
+                    # 移动 buffer 指针
+                    buffer = buffer[end:]
+                
+                # 处理剩余 buffer (未闭合部分或普通文本)
+                # 注意：如果 buffer 末尾可能是标签的一部分，应该保留等待下一块
+                # 这里做一个简单处理：如果处于 THINKING 或 NORMAL，且 buffer 不像标签头，则发送
+                # 如果处于 ACTION，始终不发送
+                
+                if current_state == "ACTION":
+                    # Action 状态全缓冲
+                    pass
+                else:
+                    # 检查 buffer 是否以 < 开头，防止切断标签
+                    # 如果 buffer 很长且没有 <，则安全发送
+                    if "<" in buffer:
+                        # 有潜在标签，保留 buffer
+                        # 优化：只保留 < 之后的部分
+                        safe_idx = buffer.find("<")
+                        if safe_idx > 0:
+                            safe_content = buffer[:safe_idx]
+                            if current_state == "THINKING":
+                                self.callbacks.on_think_chunk(safe_content)
+                            elif current_state != "ACTION":
+                                self.callbacks.on_text_chunk(safe_content)
+                            buffer = buffer[safe_idx:]
                     else:
-                        m_close = _RE_THINK_CLOSE.search(remaining)
-                        if m_close:
-                            think_text = remaining[:m_close.start()]
-                            if think_text:
-                                self.callbacks.on_think_chunk(think_text)
-                            in_think = False
-                            remaining = remaining[m_close.end():]
-                        else:
-                            self.callbacks.on_think_chunk(remaining)
-                            remaining = ""
+                        if current_state == "THINKING":
+                            self.callbacks.on_think_chunk(buffer)
+                        elif current_state != "ACTION":
+                            self.callbacks.on_text_chunk(buffer)
+                        buffer = ""
 
-        return "".join(text_parts)
+        # 循环结束，检查 residual buffer
+        # 通常这里 buffer 应该空了，或者是残缺的
+        # 但如果是 Action 没闭合，buffer 里会有内容，会被后续 parse 步骤捕获报错
+        # 如果是 Think 没闭合，我们把剩余的发出去
+        if buffer and current_state != "ACTION":
+             if current_state == "THINKING":
+                 self.callbacks.on_think_chunk(buffer)
+             else:
+                 self.callbacks.on_text_chunk(buffer)
+
+        return "".join(full_text_parts)
 
     # ------------------------------------------------------------------
     # 解析并执行 <action> JSON

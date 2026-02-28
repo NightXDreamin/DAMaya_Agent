@@ -47,6 +47,8 @@ def register_default_maya_tools(registry: ToolRegistry, maya_client: Any) -> Too
         ConstraintTool,
         CreateAndConnectNodeTool,
         ExecuteSkillTool,
+        GetMayaDocsTool,
+        GetSceneContextTool,
         GetSetAttributeTool,
         QuerySelectionContextTool,
         RunCustomPythonTool,
@@ -54,6 +56,14 @@ def register_default_maya_tools(registry: ToolRegistry, maya_client: Any) -> Too
     )
 
     registry.register(QuerySelectionContextTool(maya_client))
+    registry.register(GetSceneContextTool(maya_client))
+    
+    # Docs tool
+    from pathlib import Path
+    project_root = Path(__file__).resolve().parent.parent.parent
+    docs_path = project_root / "Client" / "data" / "maya_cmds_docs.json"
+    registry.register(GetMayaDocsTool(docs_path))
+
     registry.register(RunCustomPythonTool(maya_client))
     registry.register(CreateAndConnectNodeTool(maya_client))
     registry.register(TransformTool(maya_client))

@@ -43,6 +43,66 @@ result = {
         return _execute_with_data(self.maya_client, code)
 
 
+class GetMayaDocsTool(BaseTool):
+    name = "get_maya_docs"
+    description = "查询 Maya Python 命令文档。"
+    is_dangerous = False
+
+    def __init__(self, docs_path: Path):
+        self._docs = self._load_docs(docs_path)
+
+    @staticmethod
+    def _load_docs(path: Path) -> dict[str, Any]:
+        if not path.exists():
+            return {}
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "command": {"type": "string", "description": "Maya 命令名，如 polyCube"},
+                    },
+                    "required": ["command"],
+                },
+            },
+        }
+
+    def execute(self, **kwargs) -> dict:
+        cmd = str(kwargs.get("command", "")).strip()
+        if not cmd:
+            return _error_result("command 不能为空")
+        
+        # 模糊匹配
+        result = self._docs.get(cmd)
+        if not result:
+            lowered = cmd.lower()
+            for key, val in self._docs.items():
+                if key.lower() == lowered:
+                    result = val
+                    break
+        
+        if result:
+            return {"success": True, "result": result}
+        return {"success": False, "result": None, "error": f"未找到命令文档: {cmd}"}
+
+
+class GetSceneContextTool(QuerySelectionContextTool):
+    """
+    兼容性工具：Agent 有时会产生幻觉调用 get_scene_context，
+    这里将其映射为 query_selection_context 的功能。
+    """
+    name = "get_scene_context"
+    description = "获取场景上下文（当前默认返回选择集信息）。"
+
+
+
 class RunCustomPythonTool(BaseTool):
     name = "run_custom_python"
     description = "在 Maya 中执行任意自定义 Python 代码（这是最通用的工具，任何 Maya 操作都可以通过此工具完成）。将 Python 代码作为 python_code 参数传入即可。"
