@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DAMaya Agent V1.1</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: rgba(17, 24, 39, 0.7);
+      --panel-2: rgba(30, 41, 59, 0.7);
+      --line: rgba(148, 163, 184, 0.25);
+      --txt: #e2e8f0;
+      --sub: #94a3b8;
+      --primary: #2563eb;
+      --ok: #16a34a;
+      --warn: #d97706;
+      --err: #dc2626;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Noto Sans", "Segoe UI", sans-serif;
+      color: var(--txt);
+      background: radial-gradient(circle at 0% 0%, #1d4ed8 0%, #0b1020 45%), #0b1020;
+      min-height: 100vh;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 16px;
+      padding: 16px;
+      height: 100vh;
+    }
+
+    .card {
+      backdrop-filter: blur(12px);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(2, 6, 23, 0.4);
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .title {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: .2px;
+    }
+
+    button {
+      border: 0;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff;
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: transform .15s ease, opacity .15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    .session-list {
+      margin: 0;
+      padding: 10px;
+      list-style: none;
+      overflow: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .session-item {
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.6);
+      cursor: pointer;
+    }
+
+    .session-item.active {
+      border-color: #60a5fa;
+      background: rgba(37, 99, 235, .25);
+    }
+
+    .session-title { font-size: 14px; font-weight: 500; }
+    .session-time { font-size: 12px; color: var(--sub); margin-top: 4px; }
+
+    .main {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+    }
+
+    .status {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      color: var(--sub);
+      font-size: 13px;
+    }
+
+    .messages {
+      overflow: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--panel-2);
+    }
+
+    .bubble {
+      max-width: 80%;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border: 1px solid var(--line);
+    }
+
+    .bubble.user { align-self: flex-end; background: rgba(37, 99, 235, .25); }
+    .bubble.assistant { align-self: flex-start; background: rgba(15, 23, 42, .75); }
+    .bubble.tool { align-self: center; max-width: 95%; font-size: 12px; color: #cbd5e1; background: rgba(2, 6, 23, .65); }
+    .bubble.error { align-self: center; max-width: 95%; background: rgba(220, 38, 38, .18); border-color: rgba(248, 113, 113, .5); }
+
+    .approval-card {
+      align-self: center;
+      max-width: 95%;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      border: 1px solid var(--warn);
+      background: rgba(217, 119, 6, .12);
+    }
+
+    .approval-card .label {
+      font-weight: 600;
+      color: var(--warn);
+      margin-bottom: 6px;
+    }
+
+    .approval-card pre {
+      margin: 8px 0;
+      padding: 8px;
+      background: rgba(2, 6, 23, .65);
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .approval-btns {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .approval-btns button {
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .btn-approve { background: linear-gradient(135deg, #16a34a, #15803d); }
+    .btn-reject { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+
+    .composer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      padding: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .composer textarea {
+      resize: vertical;
+      min-height: 52px;
+      max-height: 180px;
+      border: 1px solid var(--line);
+      outline: none;
+      border-radius: 10px;
+      padding: 10px;
+      color: var(--txt);
+      background: rgba(15, 23, 42, 0.85);
+      font: inherit;
+    }
+
+    .hint {
+      padding: 6px 14px 12px;
+      color: var(--sub);
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+      .sidebar { min-height: 240px; }
+      .main { min-height: 70vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar card">
+      <div class="header">
+        <div class="title">会话列表</div>
+        <button id="newSessionBtn">新建</button>
+      </div>
+      <ul id="sessionList" class="session-list"></ul>
+    </aside>
+
+    <section class="main card">
+      <div id="status" class="status">状态：未连接</div>
+      <div id="messages" class="messages"></div>
+      <div>
+        <div class="composer">
+          <textarea id="input" placeholder="输入指令，例如：帮我查询当前选择对象"></textarea>
+          <button id="sendBtn">发送</button>
+        </div>
+        <div class="hint">WebSocket: <code>/ws/chat/{session_id}</code>，消息格式：{"text":"...","use_rag":true}</div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const sessionListEl = document.getElementById('sessionList');
+    const messagesEl = document.getElementById('messages');
+    const statusEl = document.getElementById('status');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('sendBtn');
+    const newSessionBtn = document.getElementById('newSessionBtn');
+
+    let currentSessionId = null;
+    let ws = null;
+    let streamingBubble = null;
+
+    function escapeHtml(text) {
+      return text
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+    }
+
+    function setStatus(text) {
+      statusEl.textContent = `状态：${text}`;
+    }
+
+    function addBubble(role, text) {
+      const el = document.createElement('div');
+      el.className = `bubble ${role}`;
+      el.innerHTML = escapeHtml(text || '');
+      messagesEl.appendChild(el);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return el;
+    }
+
+    function addToolLine(payload) {
+      const line = JSON.stringify(payload, null, 2);
+      addBubble('tool', line);
+    }
+
+    async function fetchSessions() {
+      const resp = await fetch('/api/sessions');
+      const sessions = await resp.json();
+      renderSessions(sessions);
+      if (!currentSessionId && sessions.length) {
+        await switchSession(sessions[0].id);
+      }
+    }
+
+    function renderSessions(sessions) {
+      sessionListEl.innerHTML = '';
+      for (const s of sessions) {
+        const li = document.createElement('li');
+        li.className = `session-item ${s.id === currentSessionId ? 'active' : ''}`;
+        li.innerHTML = `
+          <div class="session-title">${escapeHtml(s.title || '新会话')}</div>
+          <div class="session-time">${new Date(s.created_at).toLocaleString()}</div>
+        `;
+        li.onclick = () => switchSession(s.id);
+        sessionListEl.appendChild(li);
+      }
+    }
+
+    async function createSession() {
+      const title = `会话 ${new Date().toLocaleString()}`;
+      const resp = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({title})
+      });
+      const session = await resp.json();
+      await fetchSessions();
+      await switchSession(session.id);
+    }
+
+    async function switchSession(sessionId) {
+      if (!sessionId) return;
+      currentSessionId = sessionId;
+      await fetchMessages(sessionId);
+      await ensureWsConnected();
+      await fetchSessions();
+    }
+
+    async function fetchMessages(sessionId) {
+      const resp = await fetch(`/api/sessions/${sessionId}/messages`);
+      const msgs = await resp.json();
+      messagesEl.innerHTML = '';
+      for (const m of msgs) {
+        if (m.role === 'user' || m.role === 'assistant') {
+          addBubble(m.role, m.content || '');
+        } else {
+          addBubble('tool', `[${m.role}] ${m.content || ''}`);
+        }
+      }
+    }
+
+    async function ensureWsConnected() {
+      if (!currentSessionId) return;
+      if (ws) {
+        ws.onopen = ws.onclose = ws.onerror = ws.onmessage = null;
+        ws.close();
+      }
+
+      const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${protocol}://${location.host}/ws/chat/${currentSessionId}`);
+
+      ws.onopen = () => setStatus('WebSocket 已连接');
+      ws.onerror = () => setStatus('WebSocket 错误');
+      ws.onclose = () => setStatus('WebSocket 已断开');
+
+      ws.onmessage = (event) => {
+        const payload = JSON.parse(event.data);
+
+        if (payload.type === 'stream') {
+          if (!streamingBubble) {
+            streamingBubble = addBubble('assistant', '');
+          }
+          streamingBubble.innerHTML += escapeHtml(payload.content || '');
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+          return;
+        }
+
+        if (payload.type === 'tool_call' || payload.type === 'tool_result') {
+          addToolLine(payload);
+          return;
+        }
+
+        if (payload.type === 'approval_required') {
+          showApprovalCard(payload);
+          return;
+        }
+
+        if (payload.type === 'error') {
+          addBubble('error', payload.message || '未知错误');
+          return;
+        }
+
+        if (payload.type === 'done') {
+          streamingBubble = null;
+          setStatus('处理完成');
+        }
+      };
+    }
+
+    function showApprovalCard(payload) {
+      const card = document.createElement('div');
+      card.className = 'approval-card';
+      card.innerHTML = `
+        <div class="label">⚠ 高危工具审批：${escapeHtml(payload.name || '')}</div>
+        <pre>${escapeHtml(payload.preview || '')}</pre>
+        <div class="approval-btns">
+          <button class="btn-approve" id="approveBtn">批准执行</button>
+          <button class="btn-reject" id="rejectBtn">拒绝</button>
+        </div>
+      `;
+      messagesEl.appendChild(card);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      const approveBtn = card.querySelector('.btn-approve');
+      const rejectBtn = card.querySelector('.btn-reject');
+
+      function respond(approved) {
+        approveBtn.disabled = true;
+        rejectBtn.disabled = true;
+        approveBtn.style.opacity = approved ? '1' : '0.3';
+        rejectBtn.style.opacity = approved ? '0.3' : '1';
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'approval_response', approved }));
+        }
+      }
+
+      approveBtn.addEventListener('click', () => respond(true));
+      rejectBtn.addEventListener('click', () => respond(false));
+    }
+
+    function sendMessage() {
+      const text = inputEl.value.trim();
+      if (!text) return;
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        addBubble('error', 'WebSocket 未连接，请先选择会话');
+        return;
+      }
+
+      addBubble('user', text);
+      streamingBubble = null;
+      setStatus('处理中');
+      ws.send(JSON.stringify({ text, use_rag: true }));
+      inputEl.value = '';
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    newSessionBtn.addEventListener('click', createSession);
+
+    (async function init() {
+      setStatus('初始化中');
+      await fetchSessions();
+      if (!currentSessionId) {
+        await createSession();
+      }
+      setStatus('就绪');
+    })();
+  </script>
+</body>
+</html>

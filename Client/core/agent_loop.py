@@ -19,6 +19,12 @@ class AgentState(Enum):
 
 
 class AgentCallbacks(Protocol):
+    """Agent 运行期回调。
+
+    ``on_approval_required`` 必须 **阻塞** 直到审批结果就绪，
+    返回 ``True`` 表示批准执行，``False`` 表示拒绝。
+    """
+
     def on_text_chunk(self, text: str) -> None: ...
 
     def on_tool_call(self, tool_name: str, arguments: dict) -> None: ...
