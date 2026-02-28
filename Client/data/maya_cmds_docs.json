@@ -1,0 +1,27 @@
+{
+  "matchTransform": {
+    "synopsis": "cmds.matchTransform(target, source, position=True, rotation=True, scale=False)",
+    "flags": ["position", "rotation", "scale", "pivots"],
+    "example": "cmds.matchTransform('joint1', 'ctrl1', position=True, rotation=True)"
+  },
+  "parentConstraint": {
+    "synopsis": "cmds.parentConstraint(target, constrained, maintainOffset=True)",
+    "flags": ["maintainOffset", "weight", "skipRotate", "skipTranslate"],
+    "example": "cmds.parentConstraint('ctrl1', 'joint1', maintainOffset=True)"
+  },
+  "createNode": {
+    "synopsis": "cmds.createNode(nodeType, name='')",
+    "flags": ["name", "parent", "shared"],
+    "example": "cmds.createNode('multiplyDivide', name='mdv_main')"
+  },
+  "connectAttr": {
+    "synopsis": "cmds.connectAttr(source, destination, force=False)",
+    "flags": ["force", "lock", "nextAvailable"],
+    "example": "cmds.connectAttr('ctrl1.tx', 'joint1.tx', force=True)"
+  },
+  "xform": {
+    "synopsis": "cmds.xform(object, q=False, ws=False, t=None, ro=None)",
+    "flags": ["query", "worldSpace", "translation", "rotation", "matrix"],
+    "example": "cmds.xform('pCube1', q=True, ws=True, t=True)"
+  }
+}
