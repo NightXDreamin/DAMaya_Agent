@@ -48,14 +48,18 @@ class AgentLoop:
         tool_schemas: Optional[list[dict[str, Any]]] = None,
         max_history_messages: int = 20,
         tool_repeat_limit: int = 3,
+        is_tool_dangerous: Optional[Callable[[str], bool]] = None,
     ):
+
         self.llm_client = llm_client
         self.tool_executor = tool_executor
         self.callbacks = callbacks
         self.tool_schemas = tool_schemas or []
         self.max_history_messages = max_history_messages
         self.tool_repeat_limit = tool_repeat_limit
+        self._is_tool_dangerous = is_tool_dangerous
         self.state = AgentState.IDLE
+
 
         self._messages: list[dict[str, Any]] = [{"role": "system", "content": system_prompt}]
         self._tool_window: list[ToolCallRecord] = []
@@ -215,10 +219,14 @@ class AgentLoop:
             for i in self._tool_window
         )
 
-    @staticmethod
-    def _is_dangerous_tool(tool_name: str) -> bool:
-        danger_names = {"run_custom_python", "create_and_connect_node", "delete_constraint"}
-        return tool_name in danger_names
+    def _is_dangerous_tool(self, tool_name: str) -> bool:
+        if self._is_tool_dangerous is None:
+            return False
+        try:
+            return bool(self._is_tool_dangerous(tool_name))
+        except Exception:
+            return False
+
 
     def _trim_history(self) -> None:
         if len(self._messages) <= self.max_history_messages + 1:

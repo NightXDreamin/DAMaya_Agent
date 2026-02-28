@@ -67,7 +67,9 @@ class AgentWorker(QThread):
             tool_schemas=self.registry.get_all_schemas(),
             max_history_messages=config.agent_max_history_messages,
             tool_repeat_limit=config.agent_tool_repeat_limit,
+            is_tool_dangerous=self.registry.is_dangerous_tool,
         )
+
 
     def submit(self, user_text: str) -> None:
         if self.isRunning():

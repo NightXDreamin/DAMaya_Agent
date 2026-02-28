@@ -36,3 +36,8 @@ class ToolRegistry:
     def execute_tool(self, name: str, arguments: dict[str, Any]) -> dict:
         tool = self.get_tool(name)
         return tool.execute(**arguments)
+
+    def is_dangerous_tool(self, name: str) -> bool:
+        tool = self._tools.get(name)
+        return bool(tool and tool.is_dangerous)
+

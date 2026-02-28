@@ -1,146 +1,85 @@
 from __future__ import annotations
 
-import base64
 import json
-import re
 import socket
-import time
-from dataclasses import dataclass
-from typing import Optional
+import struct
+import traceback
+from typing import Any
 
-START_MARKER = "MCP_JSON_START"
-END_MARKER = "MCP_JSON_END"
-
-
-@dataclass
-class ExecutionResult:
-    success: bool
-    result: Optional[object]
-    stdout: Optional[str]
-    error: Optional[str]
-    execution_time: float
-    raw_output: str = ""
+DEFAULT_TIMEOUT = 30.0
+DEFAULT_MAX_PAYLOAD_BYTES = 2 * 1024 * 1024
 
 
 class MayaSocketClient:
-    def __init__(self, host: str = "127.0.0.1", port: int = 7022, timeout: float = 30.0):
+    def __init__(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 7022,
+        timeout: float = DEFAULT_TIMEOUT,
+        max_payload_bytes: int = DEFAULT_MAX_PAYLOAD_BYTES,
+    ):
         self.host = host
         self.port = port
         self.timeout = timeout
-        self._socket: Optional[socket.socket] = None
+        self.max_payload_bytes = max_payload_bytes
 
     def connect(self) -> bool:
-        if self.is_connected():
-            return True
-
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.settimeout(self.timeout)
-        self._socket.connect((self.host, self.port))
         return True
 
     def disconnect(self) -> None:
-        if self._socket is not None:
-            try:
-                self._socket.close()
-            finally:
-                self._socket = None
+        return None
 
     def is_connected(self) -> bool:
-        return self._socket is not None
+        return True
 
-    def execute_code(self, code: str, timeout: Optional[float] = None) -> ExecutionResult:
-        start_ts = time.time()
+    def execute_code(self, code: str, timeout: float | None = None) -> dict[str, Any]:
+        request = {"code": code}
+        effective_timeout = self.timeout if timeout is None else timeout
+
         try:
-            if not self.is_connected():
-                self.connect()
+            response = self._send_request(request, timeout=float(effective_timeout))
+            if not isinstance(response, dict):
+                raise ValueError("Maya 返回格式错误：不是 JSON object")
 
-            if self._socket is None:
-                raise RuntimeError("Socket not connected")
-
-            if timeout is not None:
-                self._socket.settimeout(timeout)
-
-            payload = self._build_payload(code)
-            self._socket.sendall(payload.encode("utf-8"))
-
-            output = self._recv_until_result(timeout=timeout or self.timeout)
-            extracted = self._extract_json(output)
-            if extracted is None:
-                return ExecutionResult(
-                    success=False,
-                    result=None,
-                    stdout=None,
-                    error="无法从 Maya 返回中提取结构化 JSON。",
-                    execution_time=time.time() - start_ts,
-                    raw_output=output,
-                )
-
-            return ExecutionResult(
-                success=bool(extracted.get("success", False)),
-                result=extracted.get("result"),
-                stdout=extracted.get("stdout"),
-                error=extracted.get("error"),
-                execution_time=time.time() - start_ts,
-                raw_output=output,
-            )
+            return {
+                "success": bool(response.get("success", False)),
+                "result": response.get("result"),
+                "stdout": response.get("stdout", ""),
+                "traceback": response.get("traceback"),
+                "error": response.get("error"),
+            }
         except Exception as exc:
-            return ExecutionResult(
-                success=False,
-                result=None,
-                stdout=None,
-                error=str(exc),
-                execution_time=time.time() - start_ts,
-            )
-        finally:
-            if self._socket is not None:
-                self._socket.settimeout(self.timeout)
+            return {
+                "success": False,
+                "result": None,
+                "stdout": "",
+                "traceback": traceback.format_exc(),
+                "error": str(exc),
+            }
+
+    def _send_request(self, payload: dict[str, Any], timeout: float) -> dict[str, Any]:
+        raw_payload = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        if len(raw_payload) > self.max_payload_bytes:
+            raise ValueError(f"请求体过大: {len(raw_payload)} bytes")
+
+        with socket.create_connection((self.host, self.port), timeout=timeout) as conn:
+            conn.settimeout(timeout)
+            conn.sendall(struct.pack("!I", len(raw_payload)) + raw_payload)
+
+            header = self._recv_exact(conn, 4)
+            body_len = struct.unpack("!I", header)[0]
+            if body_len <= 0 or body_len > self.max_payload_bytes:
+                raise ValueError(f"非法响应体长度: {body_len}")
+
+            body = self._recv_exact(conn, body_len)
+            return json.loads(body.decode("utf-8"))
 
     @staticmethod
-    def _build_payload(code: str) -> str:
-        encoded = base64.b64encode(code.encode("utf-8")).decode("utf-8")
-        return (
-            "try:\n"
-            f"    __damaya_exec(\"{encoded}\")\n"
-            "except NameError:\n"
-            "    try:\n"
-            "        import Modules.server as _damaya_server\n"
-            f"        _damaya_server.__damaya_exec(\"{encoded}\")\n"
-            "    except Exception:\n"
-            "        import server as _damaya_server\n"
-            f"        _damaya_server.__damaya_exec(\"{encoded}\")\n"
-        )
-
-    def _recv_until_result(self, timeout: float) -> str:
-        if self._socket is None:
-            raise RuntimeError("Socket not connected")
-
-        deadline = time.time() + timeout
-        chunks: list[str] = []
-
-        while time.time() < deadline:
-            try:
-                data = self._socket.recv(4096)
-                if not data:
-                    break
-
-                chunks.append(data.decode("utf-8", errors="replace"))
-                merged = "".join(chunks)
-                if START_MARKER in merged and END_MARKER in merged:
-                    return merged
-            except socket.timeout:
-                continue
-
-        return "".join(chunks)
-
-    @staticmethod
-    def _extract_json(raw_output: str) -> Optional[dict]:
-        pattern = rf"{START_MARKER}(.*?){END_MARKER}"
-        match = re.search(pattern, raw_output, flags=re.DOTALL)
-        if not match:
-            return None
-
-        payload = match.group(1).strip()
-        try:
-            return json.loads(payload)
-        except json.JSONDecodeError:
-            return None
+    def _recv_exact(conn: socket.socket, nbytes: int) -> bytes:
+        data = bytearray()
+        while len(data) < nbytes:
+            chunk = conn.recv(nbytes - len(data))
+            if not chunk:
+                raise ConnectionError("连接已关闭，数据接收不完整")
+            data.extend(chunk)
+        return bytes(data)

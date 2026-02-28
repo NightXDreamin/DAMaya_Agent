@@ -41,13 +41,29 @@ result = {
 }
 """.strip()
         res = self.maya_client.execute_code(code)
-        if not res.success:
-            return {"success": False, "error": res.error, "stdout": res.stdout}
+        if not res.get("success"):
+            return {
+                "success": False,
+                "error": res.get("error"),
+                "traceback": res.get("traceback"),
+                "stdout": res.get("stdout"),
+            }
 
-        parsed = _parse_json_or_text(res.result)
+        parsed = _parse_json_or_text(res.get("result"))
         if isinstance(parsed, dict):
-            return {"success": True, "data": parsed, "stdout": res.stdout}
-        return {"success": True, "data": {"raw": res.result}, "stdout": res.stdout}
+            return {
+                "success": True,
+                "data": parsed,
+                "stdout": res.get("stdout"),
+                "traceback": res.get("traceback"),
+            }
+        return {
+            "success": True,
+            "data": {"raw": res.get("result")},
+            "stdout": res.get("stdout"),
+            "traceback": res.get("traceback"),
+        }
+
 
 
 class RunCustomPythonTool(BaseTool):
@@ -78,11 +94,13 @@ class RunCustomPythonTool(BaseTool):
         python_code = kwargs.get("python_code", "")
         res = self.maya_client.execute_code(python_code)
         return {
-            "success": res.success,
-            "result": res.result,
-            "stdout": res.stdout,
-            "error": res.error,
+            "success": res.get("success", False),
+            "result": res.get("result"),
+            "stdout": res.get("stdout"),
+            "traceback": res.get("traceback"),
+            "error": res.get("error"),
         }
+
 
 
 class CreateAndConnectNodeTool(BaseTool):
@@ -130,13 +148,15 @@ class CreateAndConnectNodeTool(BaseTool):
 
         code = "\n".join(lines)
         res = self.maya_client.execute_code(code)
-        parsed = _parse_json_or_text(res.result)
+        parsed = _parse_json_or_text(res.get("result"))
         return {
-            "success": res.success,
+            "success": res.get("success", False),
             "result": parsed,
-            "stdout": res.stdout,
-            "error": res.error,
+            "stdout": res.get("stdout"),
+            "traceback": res.get("traceback"),
+            "error": res.get("error"),
         }
+
 
 
 def _parse_json_or_text(text: Any) -> Any:
