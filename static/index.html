@@ -3,283 +3,632 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DAMaya Agent V1.1</title>
+  <title>DAMaya Agent</title>
   <style>
+    /* ========== CSS Variables & Theme ========== */
     :root {
-      --bg: #0b1020;
-      --panel: rgba(17, 24, 39, 0.7);
-      --panel-2: rgba(30, 41, 59, 0.7);
-      --line: rgba(148, 163, 184, 0.25);
-      --txt: #e2e8f0;
-      --sub: #94a3b8;
-      --primary: #2563eb;
-      --ok: #16a34a;
-      --warn: #d97706;
-      --err: #dc2626;
+      --bg: #1E1E2E;
+      --bg-secondary: #252536;
+      --bg-tertiary: #2A2A3D;
+      --surface: #2E2E42;
+      --border: rgba(255,255,255,0.08);
+      --border-active: rgba(43,125,233,0.5);
+      --text: #E0E0E0;
+      --text-secondary: #9CA3AF;
+      --text-muted: #6B7280;
+      --accent: #2B7DE9;
+      --accent-hover: #3B8DF9;
+      --accent-subtle: rgba(43,125,233,0.15);
+      --user-bubble: rgba(43,125,233,0.18);
+      --assistant-bubble: #252536;
+      --ok: #22C55E;
+      --warn: #F59E0B;
+      --warn-bg: rgba(245,158,11,0.1);
+      --warn-border: rgba(245,158,11,0.35);
+      --err: #EF4444;
+      --err-bg: rgba(239,68,68,0.1);
+      --tool-bg: rgba(255,255,255,0.04);
+      --tool-border: rgba(255,255,255,0.06);
+      --code-bg: #1a1a2e;
+      --scrollbar-thumb: rgba(255,255,255,0.12);
+      --scrollbar-track: transparent;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+      --radius: 12px;
+      --radius-sm: 8px;
     }
 
-    * { box-sizing: border-box; }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #F9F9F9;
+        --bg-secondary: #FFFFFF;
+        --bg-tertiary: #F3F4F6;
+        --surface: #FFFFFF;
+        --border: rgba(0,0,0,0.08);
+        --border-active: rgba(26,107,212,0.5);
+        --text: #333333;
+        --text-secondary: #6B7280;
+        --text-muted: #9CA3AF;
+        --accent: #1A6BD4;
+        --accent-hover: #1558B0;
+        --accent-subtle: rgba(26,107,212,0.1);
+        --user-bubble: rgba(26,107,212,0.12);
+        --assistant-bubble: #FFFFFF;
+        --ok: #16A34A;
+        --warn: #D97706;
+        --warn-bg: rgba(217,119,6,0.08);
+        --warn-border: rgba(217,119,6,0.3);
+        --err: #DC2626;
+        --err-bg: rgba(220,38,38,0.08);
+        --tool-bg: rgba(0,0,0,0.03);
+        --tool-border: rgba(0,0,0,0.06);
+        --code-bg: #F3F4F6;
+        --scrollbar-thumb: rgba(0,0,0,0.15);
+        --scrollbar-track: transparent;
+        --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      }
+    }
+
+    /* ========== Reset & Base ========== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      margin: 0;
-      font-family: "Noto Sans", "Segoe UI", sans-serif;
-      color: var(--txt);
-      background: radial-gradient(circle at 0% 0%, #1d4ed8 0%, #0b1020 45%), #0b1020;
-      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      height: 100vh;
+      overflow: hidden;
     }
 
-    .layout {
-      display: grid;
-      grid-template-columns: 300px 1fr;
-      gap: 16px;
-      padding: 16px;
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+    /* ========== Animations ========== */
+    @keyframes slideUpFadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .animate-in {
+      animation: slideUpFadeIn 0.3s ease-out both;
+    }
+
+    /* ========== Layout ========== */
+    .app {
+      display: flex;
       height: 100vh;
     }
 
-    .card {
-      backdrop-filter: blur(12px);
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      box-shadow: 0 10px 30px rgba(2, 6, 23, 0.4);
-    }
-
+    /* ========== Sidebar ========== */
     .sidebar {
+      width: 260px;
+      min-width: 260px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      overflow: hidden;
     }
 
-    .header {
-      padding: 14px;
-      border-bottom: 1px solid var(--line);
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
     }
 
-    .title {
-      font-size: 16px;
-      font-weight: 600;
-      letter-spacing: .2px;
+    .sidebar-header .logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.3px;
     }
 
-    button {
-      border: 0;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    .sidebar-header .logo span {
+      color: var(--accent);
+    }
+
+    .btn-new {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 500;
       color: #fff;
-      border-radius: 10px;
-      padding: 8px 12px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-sm);
       cursor: pointer;
-      transition: transform .15s ease, opacity .15s ease;
+      transition: all 0.2s ease;
     }
 
-    button:hover { transform: translateY(-1px); }
-    button:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-new:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(43,125,233,0.3);
+    }
 
     .session-list {
-      margin: 0;
-      padding: 10px;
       list-style: none;
-      overflow: auto;
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      overflow-y: auto;
+      padding: 8px;
     }
 
     .session-item {
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: rgba(15, 23, 42, 0.6);
+      padding: 10px 12px;
+      margin-bottom: 2px;
+      border-radius: var(--radius-sm);
       cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .session-item:hover {
+      background: var(--accent-subtle);
     }
 
     .session-item.active {
-      border-color: #60a5fa;
-      background: rgba(37, 99, 235, .25);
+      background: var(--accent-subtle);
+      border-left-color: var(--accent);
     }
 
-    .session-title { font-size: 14px; font-weight: 500; }
-    .session-time { font-size: 12px; color: var(--sub); margin-top: 4px; }
+    .session-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
+    .session-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    /* ========== Main Chat Area ========== */
     .main {
-      display: grid;
-      grid-template-rows: auto 1fr auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    /* Status bar */
+    .status-bar {
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-secondary);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: background 0.3s ease;
+    }
+
+    .status-dot.connected { background: var(--ok); }
+    .status-dot.processing { background: var(--warn); animation: pulse 1.2s infinite; }
+    .status-dot.error { background: var(--err); }
+
+    /* Messages container */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: var(--bg);
+    }
+
+    /* ========== Bubbles ========== */
+    .bubble {
+      max-width: 75%;
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 14px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .bubble.user {
+      align-self: flex-end;
+      background: var(--user-bubble);
+      border: 1px solid var(--border-active);
+      border-bottom-right-radius: 4px;
+    }
+
+    .bubble.assistant {
+      align-self: flex-start;
+      background: var(--assistant-bubble);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+      box-shadow: var(--shadow);
+    }
+
+    .bubble.error {
+      align-self: center;
+      max-width: 90%;
+      background: var(--err-bg);
+      border: 1px solid rgba(239,68,68,0.25);
+      color: var(--err);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    /* ========== Tool Call (折叠) ========== */
+    .tool-details {
+      align-self: center;
+      max-width: 90%;
+      width: 100%;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--tool-border);
+      background: var(--tool-bg);
+      font-size: 13px;
       overflow: hidden;
     }
 
-    .status {
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--line);
-      color: var(--sub);
-      font-size: 13px;
-    }
-
-    .messages {
-      overflow: auto;
-      padding: 14px;
+    .tool-details summary {
+      padding: 8px 14px;
+      cursor: pointer;
+      color: var(--text-secondary);
       display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background: var(--panel-2);
+      align-items: center;
+      gap: 8px;
+      list-style: none;
+      transition: all 0.2s ease;
+      user-select: none;
     }
 
-    .bubble {
-      max-width: 80%;
-      border-radius: 12px;
-      padding: 10px 12px;
+    .tool-details summary::-webkit-details-marker { display: none; }
+
+    .tool-details summary::before {
+      content: '▸';
+      font-size: 11px;
+      transition: transform 0.2s ease;
+      display: inline-block;
+    }
+
+    .tool-details[open] summary::before {
+      transform: rotate(90deg);
+    }
+
+    .tool-details summary:hover {
+      background: rgba(255,255,255,0.04);
+    }
+
+    .tool-details .tool-icon {
       font-size: 14px;
+    }
+
+    .tool-details .tool-label {
+      font-weight: 500;
+    }
+
+    .tool-details .tool-body {
+      padding: 0 14px 12px;
+    }
+
+    .tool-details pre {
+      margin: 0;
+      padding: 10px 12px;
+      background: var(--code-bg);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
       line-height: 1.5;
       white-space: pre-wrap;
-      word-break: break-word;
-      border: 1px solid var(--line);
+      word-break: break-all;
+      overflow-x: auto;
+      color: var(--text-secondary);
     }
 
-    .bubble.user { align-self: flex-end; background: rgba(37, 99, 235, .25); }
-    .bubble.assistant { align-self: flex-start; background: rgba(15, 23, 42, .75); }
-    .bubble.tool { align-self: center; max-width: 95%; font-size: 12px; color: #cbd5e1; background: rgba(2, 6, 23, .65); }
-    .bubble.error { align-self: center; max-width: 95%; background: rgba(220, 38, 38, .18); border-color: rgba(248, 113, 113, .5); }
-
+    /* ========== Approval Card ========== */
     .approval-card {
       align-self: center;
-      max-width: 95%;
-      border-radius: 12px;
-      padding: 14px;
-      font-size: 13px;
-      line-height: 1.5;
-      border: 1px solid var(--warn);
-      background: rgba(217, 119, 6, .12);
+      max-width: 90%;
+      width: 100%;
+      border-radius: var(--radius);
+      padding: 16px;
+      border: 1px solid var(--warn-border);
+      background: var(--warn-bg);
     }
 
     .approval-card .label {
       font-weight: 600;
+      font-size: 14px;
       color: var(--warn);
-      margin-bottom: 6px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .approval-card pre {
-      margin: 8px 0;
-      padding: 8px;
-      background: rgba(2, 6, 23, .65);
-      border-radius: 8px;
-      overflow-x: auto;
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      background: var(--code-bg);
+      border-radius: var(--radius-sm);
       font-size: 12px;
+      font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+      line-height: 1.5;
       white-space: pre-wrap;
       word-break: break-all;
+      overflow-x: auto;
+      color: var(--text-secondary);
     }
 
     .approval-btns {
       display: flex;
       gap: 10px;
-      margin-top: 10px;
     }
 
     .approval-btns button {
       flex: 1;
-      padding: 8px;
-      border-radius: 8px;
+      padding: 9px 16px;
+      border: none;
+      border-radius: var(--radius-sm);
       font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
 
-    .btn-approve { background: linear-gradient(135deg, #16a34a, #15803d); }
-    .btn-reject { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+    .btn-approve {
+      background: var(--ok);
+    }
+    .btn-approve:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
+    .btn-reject {
+      background: var(--err);
+    }
+    .btn-reject:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+    .approval-btns button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* ========== Composer ========== */
     .composer {
-      display: grid;
-      grid-template-columns: 1fr auto;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+    }
+
+    .composer-inner {
+      display: flex;
+      align-items: flex-end;
       gap: 10px;
-      padding: 12px;
-      border-top: 1px solid var(--line);
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      transition: border-color 0.2s ease;
     }
 
-    .composer textarea {
-      resize: vertical;
-      min-height: 52px;
-      max-height: 180px;
-      border: 1px solid var(--line);
+    .composer-inner:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(43,125,233,0.15);
+    }
+
+    .composer-inner textarea {
+      flex: 1;
+      border: none;
       outline: none;
-      border-radius: 10px;
-      padding: 10px;
-      color: var(--txt);
-      background: rgba(15, 23, 42, 0.85);
+      background: transparent;
+      color: var(--text);
       font: inherit;
+      font-size: 14px;
+      line-height: 1.5;
+      resize: none;
+      min-height: 24px;
+      max-height: 150px;
+      overflow-y: hidden;
     }
 
-    .hint {
-      padding: 6px 14px 12px;
-      color: var(--sub);
-      font-size: 12px;
+    .composer-inner textarea::placeholder {
+      color: var(--text-muted);
     }
 
-    @media (max-width: 900px) {
-      .layout { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
-      .sidebar { min-height: 240px; }
-      .main { min-height: 70vh; }
+    .btn-send {
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .btn-send:hover {
+      background: var(--accent-hover);
+      transform: scale(1.05);
+    }
+
+    .btn-send:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .btn-send svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* ========== Responsive ========== */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
     }
   </style>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar card">
-      <div class="header">
-        <div class="title">会话列表</div>
-        <button id="newSessionBtn">新建</button>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">DA<span>Maya</span></div>
+        <button class="btn-new" id="newSessionBtn">+ 新会话</button>
       </div>
       <ul id="sessionList" class="session-list"></ul>
     </aside>
 
-    <section class="main card">
-      <div id="status" class="status">状态：未连接</div>
-      <div id="messages" class="messages"></div>
-      <div>
-        <div class="composer">
-          <textarea id="input" placeholder="输入指令，例如：帮我查询当前选择对象"></textarea>
-          <button id="sendBtn">发送</button>
-        </div>
-        <div class="hint">WebSocket: <code>/ws/chat/{session_id}</code>，消息格式：{"text":"...","use_rag":true}</div>
+    <!-- Main -->
+    <main class="main">
+      <div class="status-bar">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">未连接</span>
       </div>
-    </section>
+
+      <div id="messages" class="messages"></div>
+
+      <div class="composer">
+        <div class="composer-inner">
+          <textarea id="input" rows="1" placeholder="输入指令，例如：帮我查询当前选择对象"></textarea>
+          <button class="btn-send" id="sendBtn" title="发送">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </main>
   </div>
 
   <script>
     const sessionListEl = document.getElementById('sessionList');
-    const messagesEl = document.getElementById('messages');
-    const statusEl = document.getElementById('status');
-    const inputEl = document.getElementById('input');
-    const sendBtn = document.getElementById('sendBtn');
+    const messagesEl   = document.getElementById('messages');
+    const statusDot    = document.getElementById('statusDot');
+    const statusText   = document.getElementById('statusText');
+    const inputEl      = document.getElementById('input');
+    const sendBtn      = document.getElementById('sendBtn');
     const newSessionBtn = document.getElementById('newSessionBtn');
 
     let currentSessionId = null;
     let ws = null;
     let streamingBubble = null;
 
+    /* ---- Helpers ---- */
     function escapeHtml(text) {
-      return text
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
-    function setStatus(text) {
-      statusEl.textContent = `状态：${text}`;
+    function setStatus(state, text) {
+      statusDot.className = 'status-dot';
+      if (state) statusDot.classList.add(state);
+      statusText.textContent = text;
     }
 
+    function scrollToBottom() {
+      requestAnimationFrame(() => {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      });
+    }
+
+    /* ---- Auto-resize textarea ---- */
+    inputEl.addEventListener('input', () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 150) + 'px';
+      inputEl.style.overflowY = inputEl.scrollHeight > 150 ? 'auto' : 'hidden';
+    });
+
+    /* ---- Bubble Factories ---- */
     function addBubble(role, text) {
       const el = document.createElement('div');
-      el.className = `bubble ${role}`;
+      el.className = `bubble ${role} animate-in`;
       el.innerHTML = escapeHtml(text || '');
       messagesEl.appendChild(el);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      scrollToBottom();
       return el;
     }
 
-    function addToolLine(payload) {
-      const line = JSON.stringify(payload, null, 2);
-      addBubble('tool', line);
+    function addToolDetails(payload) {
+      const isResult = payload.type === 'tool_result';
+      const toolName = payload.name || 'unknown';
+      const icon = isResult ? '✅' : '⚙️';
+      const label = isResult
+        ? `工具返回: ${toolName}`
+        : `调用工具: ${toolName}`;
+      const body = isResult
+        ? JSON.stringify(payload.result, null, 2)
+        : JSON.stringify(payload.arguments, null, 2);
+
+      const details = document.createElement('details');
+      details.className = 'tool-details animate-in';
+      details.innerHTML = `
+        <summary>
+          <span class="tool-icon">${icon}</span>
+          <span class="tool-label">${escapeHtml(label)}</span>
+        </summary>
+        <div class="tool-body">
+          <pre><code>${escapeHtml(body)}</code></pre>
+        </div>
+      `;
+      messagesEl.appendChild(details);
+      scrollToBottom();
     }
 
+    function showApprovalCard(payload) {
+      const card = document.createElement('div');
+      card.className = 'approval-card animate-in';
+      card.innerHTML = `
+        <div class="label">⚠️ 高危操作审批：${escapeHtml(payload.name || '')}</div>
+        <pre><code>${escapeHtml(payload.preview || '')}</code></pre>
+        <div class="approval-btns">
+          <button class="btn-approve">批准执行</button>
+          <button class="btn-reject">拒绝</button>
+        </div>
+      `;
+      messagesEl.appendChild(card);
+      scrollToBottom();
+
+      const approveBtn = card.querySelector('.btn-approve');
+      const rejectBtn  = card.querySelector('.btn-reject');
+
+      function respond(approved) {
+        approveBtn.disabled = true;
+        rejectBtn.disabled = true;
+        approveBtn.style.opacity = approved ? '1' : '0.3';
+        rejectBtn.style.opacity  = approved ? '0.3' : '1';
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'approval_response', approved }));
+        }
+      }
+
+      approveBtn.addEventListener('click', () => respond(true));
+      rejectBtn.addEventListener('click', () => respond(false));
+    }
+
+    /* ---- Sessions ---- */
     async function fetchSessions() {
       const resp = await fetch('/api/sessions');
       const sessions = await resp.json();
@@ -293,7 +642,7 @@
       sessionListEl.innerHTML = '';
       for (const s of sessions) {
         const li = document.createElement('li');
-        li.className = `session-item ${s.id === currentSessionId ? 'active' : ''}`;
+        li.className = `session-item${s.id === currentSessionId ? ' active' : ''}`;
         li.innerHTML = `
           <div class="session-title">${escapeHtml(s.title || '新会话')}</div>
           <div class="session-time">${new Date(s.created_at).toLocaleString()}</div>
@@ -307,8 +656,8 @@
       const title = `会话 ${new Date().toLocaleString()}`;
       const resp = await fetch('/api/sessions', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({title})
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
       });
       const session = await resp.json();
       await fetchSessions();
@@ -330,12 +679,25 @@
       for (const m of msgs) {
         if (m.role === 'user' || m.role === 'assistant') {
           addBubble(m.role, m.content || '');
-        } else {
-          addBubble('tool', `[${m.role}] ${m.content || ''}`);
+        } else if (m.role === 'tool') {
+          const details = document.createElement('details');
+          details.className = 'tool-details animate-in';
+          details.innerHTML = `
+            <summary>
+              <span class="tool-icon">📋</span>
+              <span class="tool-label">历史工具记录</span>
+            </summary>
+            <div class="tool-body">
+              <pre><code>${escapeHtml(m.content || '')}</code></pre>
+            </div>
+          `;
+          messagesEl.appendChild(details);
         }
       }
+      scrollToBottom();
     }
 
+    /* ---- WebSocket ---- */
     async function ensureWsConnected() {
       if (!currentSessionId) return;
       if (ws) {
@@ -346,9 +708,9 @@
       const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
       ws = new WebSocket(`${protocol}://${location.host}/ws/chat/${currentSessionId}`);
 
-      ws.onopen = () => setStatus('WebSocket 已连接');
-      ws.onerror = () => setStatus('WebSocket 错误');
-      ws.onclose = () => setStatus('WebSocket 已断开');
+      ws.onopen = () => setStatus('connected', 'WebSocket 已连接');
+      ws.onerror = () => setStatus('error', 'WebSocket 错误');
+      ws.onclose = () => setStatus('', 'WebSocket 已断开');
 
       ws.onmessage = (event) => {
         const payload = JSON.parse(event.data);
@@ -358,12 +720,12 @@
             streamingBubble = addBubble('assistant', '');
           }
           streamingBubble.innerHTML += escapeHtml(payload.content || '');
-          messagesEl.scrollTop = messagesEl.scrollHeight;
+          scrollToBottom();
           return;
         }
 
         if (payload.type === 'tool_call' || payload.type === 'tool_result') {
-          addToolLine(payload);
+          addToolDetails(payload);
           return;
         }
 
@@ -374,47 +736,18 @@
 
         if (payload.type === 'error') {
           addBubble('error', payload.message || '未知错误');
+          setStatus('error', '出错');
           return;
         }
 
         if (payload.type === 'done') {
           streamingBubble = null;
-          setStatus('处理完成');
+          setStatus('connected', '处理完成');
         }
       };
     }
 
-    function showApprovalCard(payload) {
-      const card = document.createElement('div');
-      card.className = 'approval-card';
-      card.innerHTML = `
-        <div class="label">⚠ 高危工具审批：${escapeHtml(payload.name || '')}</div>
-        <pre>${escapeHtml(payload.preview || '')}</pre>
-        <div class="approval-btns">
-          <button class="btn-approve" id="approveBtn">批准执行</button>
-          <button class="btn-reject" id="rejectBtn">拒绝</button>
-        </div>
-      `;
-      messagesEl.appendChild(card);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-
-      const approveBtn = card.querySelector('.btn-approve');
-      const rejectBtn = card.querySelector('.btn-reject');
-
-      function respond(approved) {
-        approveBtn.disabled = true;
-        rejectBtn.disabled = true;
-        approveBtn.style.opacity = approved ? '1' : '0.3';
-        rejectBtn.style.opacity = approved ? '0.3' : '1';
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'approval_response', approved }));
-        }
-      }
-
-      approveBtn.addEventListener('click', () => respond(true));
-      rejectBtn.addEventListener('click', () => respond(false));
-    }
-
+    /* ---- Send Message ---- */
     function sendMessage() {
       const text = inputEl.value.trim();
       if (!text) return;
@@ -425,9 +758,10 @@
 
       addBubble('user', text);
       streamingBubble = null;
-      setStatus('处理中');
+      setStatus('processing', '处理中…');
       ws.send(JSON.stringify({ text, use_rag: true }));
       inputEl.value = '';
+      inputEl.style.height = 'auto';
     }
 
     sendBtn.addEventListener('click', sendMessage);
@@ -439,13 +773,14 @@
     });
     newSessionBtn.addEventListener('click', createSession);
 
+    /* ---- Init ---- */
     (async function init() {
-      setStatus('初始化中');
+      setStatus('', '初始化中…');
       await fetchSessions();
       if (!currentSessionId) {
         await createSession();
       }
-      setStatus('就绪');
+      setStatus('connected', '就绪');
     })();
   </script>
 </body>

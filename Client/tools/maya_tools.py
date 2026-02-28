@@ -68,8 +68,8 @@ result = {
 
 class RunCustomPythonTool(BaseTool):
     name = "run_custom_python"
-    description = "执行自定义 Python 代码（高危操作）。"
-    is_dangerous = True
+    description = "执行自定义 Python 代码。"
+    is_dangerous = False
 
     def __init__(self, maya_client: MayaSocketClient):
         self.maya_client = maya_client
