@@ -55,7 +55,7 @@ DAMaya Agent 是专为 Autodesk Maya 打造的智能化技术美术（Technical 
 
 ```bash
 # 克隆项目
-git clone https://github.com/YourUsername/DAMaya_Agent.git
+git clone https://github.com/NightXDreamin/DAMaya_Agent.git
 cd DAMaya_Agent
 
 # 创建并激活虚拟环境 (推荐)
@@ -84,7 +84,7 @@ MAYA_PORT=17022
 ```python
 import sys
 # 将项目 Modules 目录加入 Maya 路径 (请修改为实际路径)
-sys.path.append(r"C:\Users\qingpulou\Documents\GitHub\DAMaya_Agent") 
+sys.path.append(r"\path\to\your\folder\DAMaya_Agent") 
 
 import Modules.server as server
 # 启动服务，端口需与 .env 中一致
