@@ -1,8 +1,33 @@
-openai>=1.40.0
-PySide6>=6.7.0
-python-dotenv>=1.0.1
-tiktoken>=0.7.0
+# ── DAMaya Agent 依赖 ─────────────────────────────────────────────
+# Web Server (FastAPI + WebSocket)
 fastapi>=0.116.0
 uvicorn>=0.35.0
 websockets>=13.0
+python-multipart>=0.0.9
 
+# LLM / Agent 框架 (LangGraph + LangChain)
+openai>=1.40.0
+langchain-core>=0.3.0
+langchain-openai>=0.3.0
+langgraph>=0.4.0
+langgraph-checkpoint-sqlite>=2.0.0
+aiosqlite>=0.20.0
+tiktoken>=0.7.0
+
+# RAG 向量检索（向量轨；缺失时 vector_rag 自动降级为关键词轨）
+faiss-cpu>=1.7.0
+numpy>=1.25
+
+# MCP（IDE 接入）
+mcp>=1.0.0
+
+# 配置
+python-dotenv>=1.0.1
+
+# 可选：桌面 UI（Client/ui，仅本地桌面模式需要）
+# PySide6>=6.7.0
+
+# ── 测试 ──────────────────────────────────────────────────────────
+pytest>=8.0
+pytest-asyncio>=0.23
+pytest-mock>=3.12

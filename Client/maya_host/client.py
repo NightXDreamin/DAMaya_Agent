@@ -14,7 +14,7 @@ class MayaSocketClient:
     def __init__(
         self,
         host: str = "127.0.0.1",
-        port: int = 7022,
+        port: int = 17022,
         timeout: float = DEFAULT_TIMEOUT,
         max_payload_bytes: int = DEFAULT_MAX_PAYLOAD_BYTES,
     ):

@@ -13,7 +13,7 @@ import maya.cmds as cmds
 import maya.utils as maya_utils
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 7022
+DEFAULT_PORT = 17022
 DEFAULT_READ_TIMEOUT = 30.0
 DEFAULT_MAX_PAYLOAD_BYTES = 2 * 1024 * 1024
 

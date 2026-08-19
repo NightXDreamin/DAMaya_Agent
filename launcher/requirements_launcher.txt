@@ -1,0 +1,4 @@
+# DAMaya Agent Launcher 依赖
+# pip install -r launcher/requirements_launcher.txt
+pystray>=0.19.5
+Pillow>=10.0.0

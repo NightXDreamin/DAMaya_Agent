@@ -4,504 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DAMaya Agent</title>
-  
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  
+  <meta name="description" content="DAMaya — Maya Technical Artist AI Assistant" />
+
   <!-- Highlight.js Theme -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-  
-  <style>
-    :root {
-      /* Palette */
-      --bg-primary: #09090b;
-      --bg-secondary: #18181b;
-      --bg-tertiary: #27272a;
-      
-      --border-subtle: rgba(255, 255, 255, 0.08);
-      --border-light: rgba(255, 255, 255, 0.12);
-      
-      --text-primary: #e2e8f0;
-      --text-secondary: #a1a1aa;
-      --text-muted: #71717a;
-      
-      --accent-blue: #3b82f6;
-      --accent-blue-dim: rgba(59, 130, 246, 0.15);
-      --accent-green: #10b981;
-      --accent-red: #ef4444;
-      --accent-orange: #f59e0b;
-      
-      /* Spacing & Radius */
-      --radius-lg: 16px;
-      --radius-md: 12px;
-      --radius-sm: 6px;
-      
-      --timeline-width: 2px;
-      --timeline-color: var(--bg-tertiary);
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
-    
-    body {
-      background-color: var(--bg-primary);
-      color: var(--text-primary);
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      height: 100vh;
-      overflow: hidden;
-      display: flex;
-    }
-
-    /* ---- Scrollbar ---- */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
-
-    /* ---- Sidebar ---- */
-    .sidebar {
-      width: 260px;
-      background: var(--bg-primary);
-      border-right: 1px solid var(--border-subtle);
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-    }
-
-    .sidebar-header {
-      padding: 20px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .logo {
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-new {
-      background: var(--bg-tertiary);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-secondary);
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .btn-new:hover { background: #3f3f46; color: #fff; }
-
-    .session-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px 8px;
-      list-style: none;
-    }
-
-    .session-item {
-      padding: 10px 12px;
-      border-radius: 8px;
-      margin-bottom: 4px;
-      cursor: pointer;
-      transition: background 0.15s;
-      position: relative;
-      group: session-item;
-    }
-
-    .session-item:hover { background: var(--bg-secondary); }
-    .session-item.active { background: var(--bg-tertiary); }
-    .session-item.active .title { color: #fff; font-weight: 500; }
-
-    .session-item .title {
-      font-size: 13px;
-      color: var(--text-secondary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 2px;
-    }
-    
-    .session-item .time { font-size: 11px; color: var(--text-muted); }
-    
-    .session-del {
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      opacity: 0;
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      padding: 4px;
-      font-size: 14px;
-      transition: opacity 0.2s;
-    }
-    .session-item:hover .session-del { opacity: 1; }
-    .session-del:hover { color: var(--accent-red); }
-
-    /* ---- Main Area ---- */
-    .main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      background: radial-gradient(circle at 50% 0%, #1c1c1f 0%, #09090b 40%);
-    }
-
-    .timeline-container {
-      flex: 1;
-      overflow-y: auto;
-      padding: 40px 10%;
-      display: flex;
-      flex-direction: column;
-      gap: 32px;
-      scroll-behavior: smooth;
-    }
-
-    /* ---- Timeline Item Structure ---- */
-    .timeline-group {
-      position: relative;
-      padding-left: 24px; /* Space for the line */
-    }
-
-    /* Vertical Line */
-    .timeline-group::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 8px;
-      bottom: -32px; /* Connect to next group */
-      width: 2px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 2px;
-    }
-    .timeline-group:last-child::before { bottom: 0; }
-
-    /* User Query Styling */
-    .user-query {
-      position: relative;
-      margin-bottom: 24px;
-    }
-    /* Dot for User */
-    .user-query::after {
-      content: '';
-      position: absolute;
-      left: -29px;
-      top: 6px;
-      width: 12px;
-      height: 12px;
-      background: var(--text-primary);
-      border: 2px solid var(--bg-primary);
-      border-radius: 50%;
-      box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
-    }
-    
-    .user-card {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 16px 20px;
-      font-size: 15px;
-      line-height: 1.6;
-      color: var(--text-primary);
-      display: inline-block;
-      max-width: 100%;
-    }
-
-    /* ---- Agent Response Steps ---- */
-    
-    /* 1. Thinking Node */
-    .step-think {
-      margin-bottom: 16px;
-      position: relative;
-    }
-    /* Dot for Think */
-    .step-think::after {
-      content: '';
-      position: absolute;
-      left: -28px;
-      top: 10px;
-      width: 10px;
-      height: 10px;
-      background: var(--bg-primary);
-      border: 2px solid var(--text-muted);
-      border-radius: 50%;
-    }
-
-    .think-card {
-      background: rgba(0,0,0,0.2);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      overflow: hidden;
-    }
-    
-    .think-header {
-      padding: 10px 16px;
-      background: rgba(255,255,255,0.02);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--text-muted);
-      font-style: italic;
-      user-select: none;
-    }
-    .think-header:hover { color: var(--text-secondary); }
-    .think-icon { transition: transform 0.2s; }
-    .think-card.open .think-icon { transform: rotate(90deg); }
-    
-    .think-body {
-      padding: 16px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 12px;
-      line-height: 1.6;
-      color: #a1a1aa;
-      border-top: 1px solid var(--border-subtle);
-      display: none;
-      white-space: pre-wrap;
-    }
-    .think-card.open .think-body { display: block; }
-
-    /* Active Glow Animation */
-    @keyframes glow {
-      0% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); }
-      50% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.6); }
-      100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); }
-    }
-    .step-think.active .think-card {
-      animation: glow 2s infinite;
-    }
-
-    /* 2. Tool & Observation Boxes (Collapsible) */
-    details.tool-box, details.obs-box {
-      margin-bottom: 12px;
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      background: rgba(255, 255, 255, 0.02);
-      overflow: hidden;
-      font-size: 13px;
-      position: relative;
-    }
-    
-    /* Dot for Tool/Obs in timeline if they are top-level steps, 
-       but here we assume they are children of a group/message.
-       We can add a pseudo-element if we want them to mark the timeline line too.
-    */
-    
-    summary {
-      padding: 8px 12px;
-      cursor: pointer;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 500;
-      transition: background 0.15s;
-      list-style: none; /* Hide default arrow */
-    }
-    summary::-webkit-details-marker { display: none; }
-    summary:hover { background: rgba(255, 255, 255, 0.05); }
-
-    .tool-box summary { color: #a78bfa; /* Purple-ish */ }
-    .obs-box summary { color: var(--text-muted); }
-    
-    .obs-box.error { border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05); }
-    .obs-box.error summary { color: #fca5a5; }
-
-    .tool-content, .obs-content {
-      padding: 12px;
-      border-top: 1px solid var(--border-subtle);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      line-height: 1.5;
-      color: var(--text-secondary);
-      background: #0d0d0d;
-    }
-    
-    .tool-content pre, .obs-content pre {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-all;
-      overflow-x: auto;
-    }
-
-    /* 3. Final Answer Node */
-    .step-result {
-      position: relative;
-      margin-top: 8px;
-    }
-    .step-result::after {
-      content: '';
-      position: absolute;
-      left: -29px;
-      top: 0;
-      width: 12px;
-      height: 12px;
-      background: var(--accent-blue);
-      border: 2px solid var(--bg-primary);
-      border-radius: 50%;
-      box-shadow: 0 0 0 2px var(--accent-blue-dim);
-    }
-    
-    .markdown-body {
-      color: var(--text-primary);
-      font-size: 15px;
-      line-height: 1.7;
-    }
-    .markdown-body p { margin-bottom: 1em; }
-    .markdown-body h1, .markdown-body h2, .markdown-body h3 { 
-      margin-top: 1.5em; margin-bottom: 0.8em; color: #fff; font-weight: 600; 
-    }
-    .markdown-body code {
-      background: rgba(255,255,255,0.1);
-      padding: 2px 5px;
-      border-radius: 4px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.9em;
-      color: #fca5a5;
-    }
-    .markdown-body pre {
-      background: #0d0d0d !important;
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 12px;
-      margin: 16px 0;
-      overflow-x: auto;
-    }
-    .markdown-body pre code {
-      background: transparent;
-      padding: 0;
-      color: inherit;
-      border-radius: 0;
-    }
-    .markdown-body ul, .markdown-body ol { padding-left: 20px; margin-bottom: 1em; }
-    .markdown-body li { margin-bottom: 0.4em; }
-
-    /* Approval Card */
-    .approval-card {
-      background: rgba(30, 41, 59, 0.4);
-      border: 1px solid var(--accent-red);
-      border-radius: var(--radius-md);
-      padding: 16px;
-      margin-bottom: 16px;
-    }
-    .approval-title { color: var(--accent-red); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-    .approval-code { 
-      background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px; 
-      font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary);
-      margin-bottom: 12px; white-space: pre-wrap;
-    }
-    .approval-actions { display: flex; gap: 12px; }
-    .btn-approve, .btn-reject {
-      flex: 1; padding: 8px; border-radius: 6px; font-weight: 500; cursor: pointer; border: none;
-      font-size: 13px; transition: opacity 0.2s;
-    }
-    .btn-approve { background: var(--accent-green); color: #fff; }
-    .btn-reject { background: rgba(255,255,255,0.1); color: var(--text-primary); }
-    .btn-approve:hover, .btn-reject:hover { opacity: 0.9; }
-
-    /* ---- Composer (Input Area) ---- */
-    .composer-area {
-      padding: 24px 10%;
-      /* background: linear-gradient(to top, var(--bg-primary) 80%, transparent); */
-      background: var(--bg-primary);
-      border-top: 1px solid var(--border-subtle);
-    }
-    
-    .composer-wrapper {
-      position: relative;
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-light);
-      border-radius: var(--radius-lg);
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .composer-wrapper:focus-within {
-      border-color: var(--accent-blue);
-      box-shadow: 0 0 0 2px var(--accent-blue-dim);
-    }
-
-    textarea {
-      width: 100%;
-      background: transparent;
-      border: none;
-      color: var(--text-primary);
-      padding: 16px;
-      padding-right: 50px;
-      font-family: inherit;
-      font-size: 15px;
-      resize: none;
-      min-height: 56px;
-      max-height: 200px;
-      display: block;
-    }
-    
-    .send-btn {
-      position: absolute;
-      right: 10px;
-      bottom: 10px;
-      width: 32px;
-      height: 32px;
-      background: var(--accent-blue);
-      border: none;
-      border-radius: 8px;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; background: var(--bg-tertiary); }
-    .send-btn:hover:not(:disabled) { transform: scale(1.05); }
-
-    /* Status Toast */
-    .status-toast {
-      position: fixed;
-      bottom: 100px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(24, 24, 27, 0.9);
-      backdrop-filter: blur(8px);
-      border: 1px solid var(--border-light);
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 13px;
-      color: var(--text-secondary);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      z-index: 100;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s;
-    }
-    .status-toast.visible { opacity: 1; }
-    .spinner {
-      width: 14px; height: 14px; border: 2px solid var(--border-light);
-      border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-  </style>
+  <!-- App Styles -->
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
 
-  <!-- Sidebar -->
+  <!-- ══ Sidebar ══════════════════════════════════════════════ -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <div class="logo">
@@ -512,484 +24,147 @@
         </svg>
         DAMaya Agent
       </div>
-      <button class="btn-new" id="newSessionBtn" title="New Session">+</button>
+      <button class="btn-icon" id="newSessionBtn" title="新建会话">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
     </div>
-    <ul class="session-list" id="sessionList">
-      <!-- Session items will be injected here -->
-    </ul>
+
+    <ul class="session-list" id="sessionList"></ul>
+
+    <div class="sidebar-footer">
+      <button class="btn-icon btn-settings" id="settingsBtn" title="设置">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 0 4.93 19.07"/><path d="M20.49 9A9 9 0 1 0 7 20.49"/></svg>
+        设置
+      </button>
+    </div>
   </aside>
 
-  <!-- Main Content -->
+  <!-- ══ Main ═════════════════════════════════════════════════ -->
   <main class="main">
+    <!-- Timeline -->
     <div class="timeline-container" id="timelineContainer">
-      <!-- Timeline Groups will be injected here -->
+      <div class="welcome-screen" id="welcomeScreen">
+        <div class="w-logo">DAMaya Agent v2.0</div>
+        <p>Maya Technical Artist AI 助手</p>
+        <p style="font-size:12px;margin-top:4px;">输入指令，开始与 Agent 协作</p>
+      </div>
     </div>
 
     <!-- Status Toast -->
     <div id="statusToast" class="status-toast">
       <div class="spinner"></div>
-      <span id="statusText">Thinking...</span>
+      <span id="statusText">处理中…</span>
     </div>
 
-    <!-- Input Area -->
+    <!-- ── Composer ──────────────────────────────────────────── -->
     <div class="composer-area">
+
+      <!-- Attachment chips -->
+      <div class="attachment-chips" id="attachmentChips"></div>
+
+      <!-- Top row: RAG toggle + Model select -->
+      <div class="composer-top-row">
+        <button class="toggle-pill active" id="ragToggle" title="切换 RAG 上下文增强">
+          <span class="toggle-dot"></span>
+          <span>RAG</span>
+        </button>
+        <select class="model-select" id="modelSelect" title="选择模型">
+          <!-- Populated by JS -->
+        </select>
+      </div>
+
       <div class="composer-wrapper">
-        <textarea id="input" placeholder="Ask Maya Agent..." rows="1"></textarea>
-        <button id="sendBtn" class="send-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        <!-- Left action buttons -->
+        <div class="composer-actions">
+          <!-- File upload -->
+          <button class="composer-file-btn" id="fileBtn" title="上传文件">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <!-- Image upload -->
+          <button class="composer-file-btn" id="imageBtn" title="上传图片">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </button>
+          <!-- Hidden inputs -->
+          <input id="fileInput" type="file" accept=".txt,.md,.json,.pdf,.zip,.py,.mel,.ma" multiple style="display:none">
+          <input id="imageInput" type="file" accept="image/*" multiple style="display:none">
+        </div>
+
+        <!-- Textarea -->
+        <textarea id="msgInput" placeholder="向 Maya Agent 提问… (Shift+Enter 换行)" rows="1"></textarea>
+
+        <!-- Send button -->
+        <button id="sendBtn" class="send-btn" title="发送 (Enter)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </button>
       </div>
     </div>
   </main>
 
-  <!-- Libraries -->
+  <!-- ══ Settings Drawer ═══════════════════════════════════════ -->
+  <div class="settings-overlay" id="settingsOverlay"></div>
+  <div class="settings-drawer" id="settingsDrawer">
+    <div class="settings-header">
+      <h3>⚙ 设置</h3>
+      <button class="btn-icon" id="settingsClose" title="关闭">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="settings-body">
+
+      <div class="settings-section">
+        <div class="settings-label">模型</div>
+        <select class="settings-select" id="setModelSelect">
+          <!-- Populated by JS -->
+        </select>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">功能开关</div>
+        <div class="settings-row">
+          <span class="settings-row-label">RAG 场景上下文增强</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setRagToggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">外观</div>
+        <div class="settings-row">
+          <span class="settings-row-label">流畅动效</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setAnimToggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">关于</div>
+        <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">
+          DAMaya Agent v2.0<br>
+          配置文件：<code style="font-size:11px;color:var(--text-secondary)">settings.json</code><br>
+          修改 settings.json 并重启服务器生效。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Libraries ════════════════════════════════════════════ -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <!-- App Logic -->
+  <script src="/static/app.js"></script>
 
   <script>
-    // ---- Config & Utils ----
-    marked.setOptions({
-      highlight: function(code, lang) {
-        if (lang && hljs.getLanguage(lang)) {
-          return hljs.highlight(code, { language: lang }).value;
-        }
-        return hljs.highlightAuto(code).value;
-      },
-      breaks: true
-    });
-
-    const DOM = {
-      timeline: document.getElementById('timelineContainer'),
-      input: document.getElementById('input'),
-      sendBtn: document.getElementById('sendBtn'),
-      sessionList: document.getElementById('sessionList'),
-      statusToast: document.getElementById('statusToast'),
-      statusText: document.getElementById('statusText'),
-    };
-
-    // ---- State ----
-    let currentSessionId = null;
-    let ws = null;
-    let isBusy = false;
-
-    // ---- Timeline Builder ----
-    class TimelineManager {
-      constructor(container) {
-        this.container = container;
-        this.currentGroup = null;
-        this.currentThinkNode = null;
-        this.currentResultNode = null;
-        this.thinkContent = "";
-        this.resultContent = "";
-      }
-
-      startNewGroup(userQuery) {
-        // Create Group Container
-        const group = document.createElement('div');
-        group.className = 'timeline-group';
-        
-        // User Query Node
-        const userNode = document.createElement('div');
-        userNode.className = 'user-query';
-        userNode.innerHTML = `<div class="user-card">${this.escapeHtml(userQuery)}</div>`;
-        group.appendChild(userNode);
-
-        this.container.appendChild(group);
-        this.currentGroup = group;
-        this.currentThinkNode = null;
-        this.currentResultNode = null;
-        this.thinkContent = "";
-        this.resultContent = "";
-        this.scrollToBottom();
-      }
-
-      // Handle Think Updates
-      updateThink(content, isAppend = true) {
-        if (!this.currentThinkNode) {
-          this.createThinkNode();
-        }
-        if (isAppend) {
-          this.thinkContent += content;
-        } else {
-          this.thinkContent = content;
-        }
-        
-        const body = this.currentThinkNode.querySelector('.think-body');
-        body.textContent = this.thinkContent;
-        
-        // Auto-scroll
-        this.scrollToBottom();
-      }
-
-      createThinkNode() {
-        const node = document.createElement('div');
-        node.className = 'step-think active';
-        node.innerHTML = `
-          <div class="think-card open">
-            <div class="think-header" onclick="this.parentElement.classList.toggle('open')">
-              <span class="think-icon">▶</span>
-              <span>Thinking Process</span>
-            </div>
-            <div class="think-body"></div>
-          </div>
-        `;
-        // Insert before result node if exists, otherwise append
-        if (this.currentResultNode) {
-          this.currentGroup.insertBefore(node, this.currentResultNode);
-        } else {
-          this.currentGroup.appendChild(node);
-        }
-        this.currentThinkNode = node;
-      }
-
-      finishThink() {
-        if (this.currentThinkNode) {
-          this.currentThinkNode.classList.remove('active');
-        }
-      }
-
-      // Handle Result Updates (Stream)
-      updateResult(content, isAppend = true) {
-        if (!this.currentResultNode) {
-          this.createResultNode();
-        }
-        
-        if (isAppend) {
-          this.resultContent += content;
-        } else {
-          this.resultContent = content;
-        }
-
-        // Filter hallucinations of [Observation]: ... in the stream
-        // Instead of injecting HTML, convert it to Markdown Blockquote to avoid mixed content issues
-        let displayContent = this.resultContent;
-        displayContent = displayContent.replace(/\[Observation\]:?([\s\S]*?)(?=(\n#|\n\[|$))/g, (match, p1) => {
-             return `\n> 📋 **Observation (Detected)**\n> ${p1.trim().replace(/\n/g, '\n> ')}\n`;
-        });
-
-        const body = this.currentResultNode.querySelector('.markdown-body');
-        body.innerHTML = marked.parse(displayContent);
-        this.scrollToBottom();
-      }
-
-      createResultNode() {
-        const node = document.createElement('div');
-        node.className = 'step-result';
-        node.innerHTML = `<div class="markdown-body"></div>`;
-        this.currentGroup.appendChild(node);
-        this.currentResultNode = node;
-      }
-
-      // Add Tool Call (New Collapsible Style)
-      addToolCall(name, args) {
-        const details = document.createElement('details');
-        details.className = 'tool-box';
-        
-        const argsStr = typeof args === 'string' ? args : JSON.stringify(args, null, 2);
-        
-        details.innerHTML = `
-          <summary>⚙️ 执行工具: ${this.escapeHtml(name)}</summary>
-          <div class="tool-content">
-            <pre>${this.escapeHtml(argsStr)}</pre>
-          </div>
-        `;
-        
-        if (this.currentResultNode) {
-          this.currentGroup.insertBefore(details, this.currentResultNode);
-        } else {
-          this.currentGroup.appendChild(details);
-        }
-        this.scrollToBottom();
-      }
-
-      // Add Observation (New Collapsible Style)
-      addObservation(name, result) {
-         const details = document.createElement('details');
-         details.className = 'obs-box';
-         
-         const resultStr = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-         const isError = resultStr.includes("Traceback") || resultStr.includes("Error:");
-         
-         if (isError) details.classList.add('error');
-
-         details.innerHTML = `
-           <summary>${isError ? '⚠️' : '📋'} 观察结果: ${this.escapeHtml(name)}</summary>
-           <div class="obs-content">
-             <pre>${this.escapeHtml(resultStr)}</pre>
-           </div>
-         `;
-
-         if (this.currentResultNode) {
-            this.currentGroup.insertBefore(details, this.currentResultNode);
-         } else {
-            this.currentGroup.appendChild(details);
-         }
-         this.scrollToBottom();
-      }
-      
-      addApprovalCard(name, preview) {
-        const div = document.createElement('div');
-        div.className = 'approval-card';
-        div.innerHTML = `
-          <div class="approval-title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            Approval Required: ${this.escapeHtml(name)}
-          </div>
-          <div class="approval-code">${this.escapeHtml(preview)}</div>
-          <div class="approval-actions">
-            <button class="btn-approve">Approve</button>
-            <button class="btn-reject">Reject</button>
-          </div>
-        `;
-        
-        div.querySelector('.btn-approve').onclick = () => {
-          ws.send(JSON.stringify({ type: 'approval_response', approved: true }));
-          div.innerHTML = '<div style="color:var(--accent-green)">✅ Approved</div>';
-        };
-        div.querySelector('.btn-reject').onclick = () => {
-          ws.send(JSON.stringify({ type: 'approval_response', approved: false }));
-          div.innerHTML = '<div style="color:var(--accent-red)">❌ Rejected</div>';
-        };
-
-        if (this.currentResultNode) {
-          this.currentGroup.insertBefore(div, this.currentResultNode);
-        } else {
-          this.currentGroup.appendChild(div);
-        }
-        this.scrollToBottom();
-      }
-
-      scrollToBottom() {
-        this.container.scrollTop = this.container.scrollHeight;
-      }
-
-      escapeHtml(text) {
-        if (!text) return '';
-        return text
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
-      }
-    }
-
-    const timeline = new TimelineManager(DOM.timeline);
-
-    // ---- WebSocket Logic ----
-    async function ensureWsConnected() {
-      if (!currentSessionId) return;
-      if (ws) {
-        ws.close();
-        ws = null;
-      }
-      
-      const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-      ws = new WebSocket(`${protocol}://${location.host}/ws/chat/${currentSessionId}`);
-
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        handleWsMessage(data);
-      };
-      
-      ws.onclose = () => {
-        setBusy(false);
-        ws = null;
-      };
-    }
-
-    function handleWsMessage(data) {
-      switch (data.type) {
-        case 'status_update':
-          showStatus(data.content);
-          break;
-          
-        case 'think_stream':
-          // Append to think box
-          showStatus('Thinking...');
-          timeline.updateThink(data.content);
-          break;
-
-        case 'tool_call':
-          // Finish think state if active
-          timeline.finishThink();
-          timeline.addToolCall(data.name, data.arguments);
-          break;
-
-        case 'tool_result':
-          timeline.addObservation(data.name, data.result);
-          break;
-          
-        case 'approval_required':
-          timeline.addApprovalCard(data.name, data.preview);
-          break;
-
-        case 'stream':
-          // Finish think state if active
-          timeline.finishThink();
-          showStatus('Generating...');
-          timeline.updateResult(data.content);
-          break;
-
-        case 'error':
-          showStatus('Error: ' + data.message);
-          timeline.updateResult(`\n\n**Error:** ${data.message}`);
-          setBusy(false);
-          break;
-
-        case 'done':
-          hideStatus();
-          setBusy(false);
-          timeline.finishThink();
-          break;
-      }
-    }
-
-    function showStatus(text) {
-      DOM.statusText.textContent = text;
-      DOM.statusToast.classList.add('visible');
-    }
-    function hideStatus() {
-      DOM.statusToast.classList.remove('visible');
-    }
-
-    function setBusy(busy) {
-      isBusy = busy;
-      DOM.sendBtn.disabled = busy;
-      DOM.input.disabled = busy;
-      if (!busy) {
-        DOM.input.disabled = false;
-        setTimeout(() => DOM.input.focus(), 100);
-      }
-    }
-
-    // ---- Interaction ----
-    async function sendMessage() {
-      const text = DOM.input.value.trim();
-      if (!text || isBusy) return;
-      
-      setBusy(true);
-      DOM.input.value = '';
-      DOM.input.style.height = 'auto';
-      
-      // Start new group in timeline
-      timeline.startNewGroup(text);
-      
-      ws.send(JSON.stringify({ text, use_rag: true }));
-    }
-
-    DOM.sendBtn.onclick = sendMessage;
-    DOM.input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-    DOM.input.addEventListener('input', function() {
-      this.style.height = 'auto';
-      this.style.height = (this.scrollHeight) + 'px';
-    });
-
-    // ---- Session Management ----
-    async function loadSessions() {
-      const res = await fetch('/api/sessions');
-      const sessions = await res.json();
-      DOM.sessionList.innerHTML = '';
-      
-      sessions.forEach(s => {
-        const li = document.createElement('li');
-        li.className = `session-item ${s.id === currentSessionId ? 'active' : ''}`;
-        li.innerHTML = `
-          <div class="title">${timeline.escapeHtml(s.title || 'New Session')}</div>
-          <div class="time">${new Date(s.created_at).toLocaleString()}</div>
-          <button class="session-del">✕</button>
-        `;
-        li.onclick = (e) => {
-          if (!e.target.classList.contains('session-del')) switchSession(s.id);
-        };
-        li.querySelector('.session-del').onclick = async (e) => {
-          e.stopPropagation();
-          if (confirm('Delete session?')) {
-            await fetch(`/api/sessions/${s.id}`, { method: 'DELETE' });
-            if (currentSessionId === s.id) currentSessionId = null;
-            loadSessions();
-          }
-        };
-        DOM.sessionList.appendChild(li);
-      });
-
-      if (!currentSessionId && sessions.length > 0) {
-        switchSession(sessions[0].id);
-      } else if (!currentSessionId && sessions.length === 0) {
-        createNewSession();
-      }
-    }
-
-    async function createNewSession() {
-      const res = await fetch('/api/sessions', { 
-        method: 'POST', 
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ title: `Session ${new Date().toLocaleTimeString()}` })
-      });
-      const data = await res.json();
-      await loadSessions();
-      switchSession(data.id);
-    }
-    
-    document.getElementById('newSessionBtn').onclick = createNewSession;
-
-    async function switchSession(id) {
-      currentSessionId = id;
-      loadSessions(); 
-
-      // Clear timeline
-      DOM.timeline.innerHTML = '';
-      
-      // Load messages
-      const res = await fetch(`/api/sessions/${id}/messages`);
-      const msgs = await res.json();
-      
-      for (const msg of msgs) {
-        if (msg.role === 'user') {
-          timeline.startNewGroup(msg.content);
-        } else if (msg.role === 'assistant') {
-          if (!timeline.currentGroup) timeline.startNewGroup("(Continued...)");
-
-          // Historical message parsing
-          const thinkMatch = msg.content.match(/<think>([\s\S]*?)<\/think>/);
-          let mainContent = msg.content;
-          
-          if (thinkMatch) {
-            timeline.updateThink(thinkMatch[1], false);
-            mainContent = mainContent.replace(thinkMatch[0], '');
-            timeline.finishThink();
-          }
-          
-          if (msg.tool_calls) {
-             let tools = msg.tool_calls;
-             if (typeof tools === 'string') {
-                try { tools = JSON.parse(tools); } catch(e) {}
-             }
-             if (Array.isArray(tools)) {
-                tools.forEach(t => timeline.addToolCall(t.function.name, t.function.arguments));
-             }
-          }
-
-          if (mainContent.trim()) {
-            timeline.updateResult(mainContent, false);
-          }
-        } else if (msg.role === 'tool') {
-           if (!timeline.currentGroup) timeline.startNewGroup("(System)");
-           timeline.addObservation("History Result", msg.content);
-        }
-      }
-      
-      await ensureWsConnected();
-    }
-
-    // Init
-    loadSessions();
-
+    // Hide welcome screen once first message arrives
+    const _origStart = TimelineManager.prototype.startNewGroup;
+    // Actually handled in app.js; we just hide the screen on first interaction
+    document.getElementById('msgInput').addEventListener('keydown', () => {
+      const ws = document.getElementById('welcomeScreen');
+      if (ws) ws.style.display = 'none';
+    }, { once: true });
   </script>
 </body>
 </html>

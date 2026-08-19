@@ -177,10 +177,13 @@ class ChatDatabase:
     def get_messages_for_llm(self, session_id: str, max_messages: int = 20) -> list[dict[str, Any]]:
         """构建发送给 LLM 的消息列表。
 
-        V1.5 ReAct 模式：
-        - 跳过旧版 role='tool' 的消息（不再使用原生 Function Calling）
-        - 跳过带 tool_calls 的 assistant 消息（旧版遗留，会触发 API 报错）
+        LangGraph 模式下仅用于「首轮无 checkpoint」时的种子历史：
+        - 跳过 role='tool' 的消息
+        - 跳过带 tool_calls 的 assistant 消息（无对应 tool 回复会触发 API 报错）
         - 只保留纯 user / assistant 消息
+
+        注意：后续轮次的对话状态由 GraphAgent 的 checkpointer（AsyncSqliteSaver，
+        thread_id=session_id）维护，本方法返回的历史只在首次 seed 时被消费。
         """
         rows = self.get_messages(session_id)
         llm_messages: list[dict[str, Any]] = []
