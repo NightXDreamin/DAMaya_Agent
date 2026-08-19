@@ -8,15 +8,29 @@ __pycache__/
 .venv/
 venv/
 
-# Environment variables
+# Environment variables & secrets
 .env
+settings.json
+
+# Runtime artifacts
+maya_agent.db
+maya_agent_graph.db
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.mcp_server.pid
+uploads/
+*.log
 
 # IDE
 .vscode/
 .idea/
+.cursor/
+.codebuddy/
+.reasonix/
 
 # OS
 .DS_Store
 Thumbs.db
 Plan.md
-/.codebuddy
