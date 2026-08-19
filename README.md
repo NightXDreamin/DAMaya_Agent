@@ -1,49 +1,55 @@
-# DAMaya Agent - Maya 智能化协作助手
+# DAMaya Agent — Maya 智能化协作助手
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Maya 2022+](https://img.shields.io/badge/Maya-2022+-orange.svg)](https://www.autodesk.com/products/maya/overview)
 [![License MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-DAMaya Agent 是专为 Autodesk Maya 打造的智能化技术美术（Technical Artist）助手。它基于 LLM（大语言模型）与 RAG（检索增强生成）技术，能够理解自然语言指令，并在 Maya 中自主执行复杂的场景操作、Python 脚本编写与调试任务。
+DAMaya Agent 是专为 Autodesk Maya 打造的智能化技术美术（Technical Artist）助手。它基于大语言模型（LLM）、LangGraph 与 RAG（检索增强生成）技术，能理解自然语言指令，并在 Maya 中自主执行场景操作、Python 脚本编写与调试。
 
-该项目采用 **Client-Server** 架构，通过 WebSocket 实现外部 Agent 进程与 Maya 宿主环境的实时通信，旨在提升 TA 与美术人员的工作效率，将繁琐的操作自动化。
+采用 **Client–Server** 架构：通过自研 TCP Socket（4 字节长度头 + JSON）连接外部 Agent 进程与 Maya 宿主，实现实时双向通信。
 
 ---
 
 ## ✨ 核心特性
 
-- **🤖 自然语言交互**：直接使用中文指令控制 Maya，无需记忆复杂的菜单或命令。
-    - *"创建一个 5x5 的立方体阵列"*
-    - *"帮我检查当前场景中有哪些五边面"*
-    - *"把选中的物体材质改为 Lambert 并赋予红色"*
-- **🧠 智能思考链 (Chain of Thought)**：Agent 具备完整的推理能力，在执行前会展示 `<Thinking>` 思考过程，确保操作逻辑透明、可控。
-- **🛠️ 强大的工具集 (Tool Use)**：
-    - **自动代码执行**：自主编写并运行 `maya.cmds` / `pymel` 脚本。
-    - **场景感知**：实时获取选择集、节点属性、DAG 层级结构。
-    - **文档查询**：内置 Maya Python Command 文档库，支持 RAG 检索，减少幻觉。
-- **⚡ 现代化的 Web UI**：
-    - 极简主义深色主题 (Dark Mode)，适配专业生产环境。
-    - **流式响应**：实时打字机效果展示 Agent 的思考与回复。
-    - **折叠式时间线**：优雅地折叠冗长的思考过程与工具调用日志，保持界面整洁。
-- **🛡️ 安全机制**：
-    - **高危操作审批**：涉及文件删除、系统命令等高危操作需人工二次确认（开发中）。
-    - **容错重试**：代码执行报错时，Agent 会自动阅读 Traceback 并尝试修正代码。
+- **🤖 自然语言交互**：直接使用中文指令控制 Maya。
+- **🧠 LangGraph Agent**：基于 LangGraph 的异步 ReAct 循环（`agent → tool → agent`），`AsyncSqliteSaver` checkpointer 维护跨轮次对话状态。
+- **🛠️ 工具集（Function Calling）**：9 个结构化 LangChain 工具（`create_maya_tools`），含场景感知、属性读写、约束创建、预置 Skill 执行等，并区分「安全 / 高危」。
+- **📚 双轨 RAG**：关键词轨（LLM 意图翻译 + 精确/模糊匹配）+ 向量轨（FAISS 语义检索）；`faiss`/`numpy` 为可选依赖，缺失时自动降级为纯关键词检索。
+- **⚡ Web UI**：深色主题、流式输出、折叠式时间线、附件上传、模型切换。
+- **🛡️ 安全机制**：高危操作审批（`is_dangerous` 工具触发前端确认卡片）、重复调用阻断、容错重试。
 
 ---
 
 ## 🏗️ 架构概览
 
-项目主要由两部分组成：
-
-1.  **Maya 宿主端 (`Modules/`)**：
-    - 运行在 Maya 内部的 Python 插件服务。
-    - 监听 Socket 端口，负责接收并执行来自 Agent 的 Python 代码，返回执行结果或报错信息。
-
-2.  **Agent 客户端 (`Client/` & `server_web.py`)**：
-    - 外部独立的 Python 进程，承载 LLM 核心逻辑。
-    - **FastAPI** 后端：提供 REST API 和 WebSocket 服务。
-    - **RAG 引擎**：管理向量数据库与文档检索。
-    - **Web 前端**：基于 HTML/JS 的可视化交互界面。
+```
+┌─────────────── 用户端 ───────────────┐
+│  Web Browser (http://127.0.0.1:8000) │
+│  IDE / Cursor (MCP stdio)            │
+└──────────────┬───────────────────────┘
+               │ WebSocket / MCP stdio
+┌──────────────▼───────────────────────┐
+│         server_web.py (FastAPI)      │
+│  /ws/chat/{id} · /api/upload · 静态  │
+└──────────────┬───────────────────────┘
+               │
+┌──────────────▼───────────────────────┐
+│      Client/core/graph_agent.py      │
+│  LangGraph 异步 Agent（bind_tools）   │
+│  checkpointer: AsyncSqliteSaver       │
+└──────┬────────────┬──────────────┬────┘
+       │            │              │
+  LLMClient    ToolRegistry     MayaDocsRetriever
+  (OpenAI      (9 个工具 +       (双轨 RAG)
+   兼容 API)      危险审批)
+       │            │
+       │    MayaSocketClient (TCP, 4字节头)
+┌──────▼────────────▼─────────────────┐
+│   Autodesk Maya + plugin_server.py   │
+│   主线程安全执行 Python，undoChunk   │
+└──────────────────────────────────────┘
+```
 
 ---
 
@@ -51,69 +57,71 @@ DAMaya Agent 是专为 Autodesk Maya 打造的智能化技术美术（Technical 
 
 ### 1. 环境准备
 
-确保您已安装 Python 3.10+ 和 Autodesk Maya。
-
 ```bash
-# 克隆项目
-git clone https://github.com/YourUsername/DAMaya_Agent.git
+git clone <repo-url>
 cd DAMaya_Agent
-
-# 创建并激活虚拟环境 (推荐)
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 安装依赖
+source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. 配置 API Key
+### 2. 配置
 
-在项目根目录创建 `.env` 文件，填入您的大模型 API 密钥（推荐使用阿里云 DashScope/Qwen）：
+复制模板为 `settings.json`（该文件已被 `.gitignore` 排除，不会提交）：
 
-```ini
-# .env
-DASHSCOPE_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-MAYA_HOST=127.0.0.1
-MAYA_PORT=17022
+```bash
+cp settings.example.json settings.json
+```
+
+编辑 `settings.json`，填入大模型 API Key（推荐阿里云 DashScope）：
+
+```json
+{
+  "api_key": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "chat_model": "qwen-turbo-latest",
+  "maya_host": "127.0.0.1",
+  "maya_port": 17022
+}
 ```
 
 ### 3. 启动 Maya 宿主服务
 
-打开 Maya，打开 **Script Editor (脚本编辑器)**，输入并运行以下 Python 代码以启动监听服务：
+在 Maya Script Editor（Python 标签页）运行：
 
 ```python
 import sys
-# 将项目 Modules 目录加入 Maya 路径 (请修改为实际路径)
-sys.path.append(r"C:\Users\qingpulou\Documents\GitHub\DAMaya_Agent") 
-
-import Modules.server as server
-# 启动服务，端口需与 .env 中一致
-server.start_server(port=17022) 
+sys.path.insert(0, r"C:\path\to\DAMaya_Agent")
+from Modules.plugin_server import start_server
+start_server(port=17022)   # 与 settings.json 的 maya_port 一致
 ```
 
-*注：看到 `Server started on 127.0.0.1:17022` 即表示启动成功。*
-
 ### 4. 启动 Agent Web 服务
-
-在终端中运行：
 
 ```bash
 python server_web.py
 ```
 
-服务启动后，浏览器访问：[http://127.0.0.1:8000](http://127.0.0.1:8000)
+浏览器访问 http://127.0.0.1:8000
+
+---
+
+## 🧪 运行测试
+
+```bash
+python -m pytest tests/ -q
+```
+
+测试使用 `tests/conftest.py` 的 `MockMayaHost` 拦截底层 Socket，无需真实 Maya 即可跑通核心链路。
 
 ---
 
 ## 📖 使用指南
 
-1.  **连接**：打开 Web 页面，左侧栏点击 `+` 创建一个新会话。
-2.  **对话**：在底部输入框输入指令，例如 *"创建一个球体"*。
-3.  **观察**：
-    - **Thinking**：查看 Agent 的拆解思路。
-    - **Action**：观察 Agent 调用的 Maya 工具及参数。
-    - **Observation**：查看 Maya 的执行反馈。
-4.  **多轮交互**：您可以基于上一步的结果继续提问，例如 *"把它往上移动 5 个单位"*。
+1. **连接**：Web 页面左侧 `+` 新建会话。
+2. **对话**：底部输入指令，如 *"创建一个球体"* 或 *"检查场景中的五边面"*。
+3. **观察**：Timeline 展示思考过程 → 工具调用 → 执行结果 → 最终回答。
+4. **审批**：高危操作弹确认卡片，批准后才执行。
 
 ---
 
@@ -121,22 +129,27 @@ python server_web.py
 
 ```text
 DAMaya_Agent/
-├── Client/                 # Agent 核心逻辑
-│   ├── core/               # 核心模块 (AgentLoop, LLMClient, RAG)
-│   ├── tools/              # 工具定义 (MayaTools, Registry)
-│   └── maya_host/          # Socket 客户端通讯代码
-├── Modules/                # Maya 内部插件 (Socket 服务端)
-├── static/                 # Web 前端资源 (HTML/CSS/JS)
-├── server_web.py           # FastAPI 启动入口
-├── requirements.txt        # 项目依赖
-├── README.md               # 项目文档
-└── .env                    # 配置文件
+├── server_web.py           # FastAPI 主入口（WebSocket/REST/静态）
+├── mcp_server.py           # MCP Server（IDE 接入，stdio）
+├── settings.example.json   # 配置模板（复制为 settings.json）
+├── requirements.txt
+├── Client/
+│   ├── config.py           # 配置加载（settings.json → .env 降级）
+│   ├── core/
+│   │   ├── graph_agent.py  # LangGraph 异步 Agent
+│   │   ├── vector_rag.py   # 双轨 RAG（关键词 + FAISS）
+│   │   └── database.py     # SQLite 会话/消息持久化
+│   ├── tools/
+│   │   ├── langchain_tools.py  # 9 个 StructuredTool 定义
+│   │   ├── registry.py         # 工具注册（旧协议兼容）
+│   │   └── skills/             # 预置 Python 技能脚本
+│   └── maya_host/client.py     # Maya Socket 客户端
+├── Modules/plugin_server.py    # Maya 侧 socket 服务器（主线程执行）
+├── static/                     # Web 前端（index.html/app.js/styles.css）
+├── launcher/                   # 系统托盘启动器（pystray）
+└── tests/                      # pytest 测试
 ```
-
-## 🤝 贡献与反馈
-
-欢迎提交 Issue 反馈 Bug 或建议。如果您有兴趣参与开发，请遵循 GitHub Flow 提交 Pull Request。
 
 ## 📄 许可证
 
-本项目基于 [MIT License](LICENSE) 开源。
+MIT License
